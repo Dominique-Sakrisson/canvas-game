@@ -14,9 +14,10 @@
     </div>
   </body>
   <script type="module">
-    import {meleeStrike} from "./character_attacks.js"
+    import { meleeStrike } from "./character_attacks.js";
     const canvas = document.getElementById("gameCanvas");
     const weaponBox = document.getElementById("weapon");
+    weaponBox.classList.add("green")
     const ctx = canvas.getContext("2d");
     let currentLevel = 1;
 
@@ -155,7 +156,7 @@
       angle: 0, // Forward direction (in radians)
       color: "blue",
       health: 10,
-      damage: 4,
+      damage: 1,
       damageStyle: "projectile",
       defenseStyle: "projectile",
       lives: 3,
@@ -186,6 +187,17 @@
       if (keys["s"]) {
         player.x -= Math.cos(player.angle) * player.speed;
         player.y -= Math.sin(player.angle) * player.speed;
+      }
+      if (keys["a"]) {
+        // Move left perpendicular to the player's angle
+        player.x += Math.cos(player.angle - Math.PI / 2) * player.speed;
+        player.y += Math.sin(player.angle - Math.PI / 2) * player.speed;
+      }
+
+      if (keys["d"]) {
+        // Move right perpendicular to the player's angle
+        player.x += Math.cos(player.angle + Math.PI / 2) * player.speed;
+        player.y += Math.sin(player.angle + Math.PI / 2) * player.speed;
       }
 
       // Boundaries check
@@ -363,12 +375,18 @@
       if (player.damageStyle === "projectile") {
         player.damageStyle = "melee"; // Cycle to melee
         weaponBox.textContent = player.damageStyle;
+        weaponBox.classList.remove("green")
+        weaponBox.classList.add("red")
       } else if (player.damageStyle === "melee") {
         player.damageStyle = "magic"; // Cycle to magic
         weaponBox.textContent = player.damageStyle;
+        weaponBox.classList.remove("red")
+        weaponBox.classList.add("blue")
       } else if (player.damageStyle === "magic") {
         player.damageStyle = "projectile"; // Cycle back to projectile
         weaponBox.textContent = player.damageStyle;
+        weaponBox.classList.remove("blue")
+        weaponBox.classList.add("green")
       }
       console.log(`Current Weapon: ${player.damageStyle}`); // Log the current weapon for debugging
     }
@@ -506,12 +524,19 @@
             m.yEnd,
           );
 
+          const combatTimer = Date.now() - ball.lastHit > 500; //verifies that damage is dealt in 800ms blocks
+          console.log({ combatTimer });
           // If distance is less than the ball's radius, deal damage
-          if (distance < ball.radius) {
+          if (distance < ball.radius && combatTimer) {
+            ball.lastHit = Date.now();
+
             console.log("Ball hit by melee strike!");
 
             // Handle damage to ball or other game logic
+
+            createParticles(ball.x, ball.y); // Create particles at collision point
             ball.health -= 1; // Example: reduce ball's health
+
             if (ball.health <= 0) {
               balls = balls.filter((b) => b !== ball); // Remove ball if health <= 0
             }
@@ -549,7 +574,6 @@
         ctx.closePath();
       }
     }
-
 
     //=================================================================================================================
 
@@ -672,7 +696,8 @@
           damageStyle,
           defense,
           lastHit: 0,
-          health: 0.5 * player.health * difficulty,
+          maxHealth: 2.5 * player.health * difficulty,
+          health: 2.5 * player.health * difficulty,
         });
       }
     }
@@ -929,7 +954,9 @@
         const healthBarHeight = 10; // Height of the health bar
         const healthBarX = ball.x - healthBarWidth / 2; // Position horizontally centered on the ball
         const healthBarY = ball.y - ball.radius - 12; // Position the health bar above the ball
-        const healthBarFill = (ball.health / 10) * healthBarWidth; // Proportional fill based on health
+
+        // const healthBarFill = (ball.health / 100) * healthBarWidth; // Proportional fill based on health
+        const healthBarFill = (ball.health / ball.maxHealth) * healthBarWidth; // Proportional fill based on health
 
         // Draw the background of the health bar (empty bar)
         ctx.fillStyle = "#000"; // Black background for the health bar
