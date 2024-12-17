@@ -1,0 +1,54 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Dependency directories
+jspm_packages/
+bower_components/
+
+# .env files (for sensitive credentials)
+.env
+.env.local
+.env.*.local
+
+# build/compiled files
+/dist
+/build
+/coverage
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE files (VSCode, JetBrains, etc.)
+.vscode/
+.idea/
+
+# MacOS system files
+.AppleDouble
+.LSOverride
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+
+# Linux system files
+*~
+
+# Docker files
+docker-compose.override.yml
+
+# Coverage folder
+coverage/
+
+# JetBrains IDE files
+.idea/
+
+# 

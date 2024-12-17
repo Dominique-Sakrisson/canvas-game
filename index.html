@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,258 +7,546 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="container">
+      <canvas id="gameCanvas" width="1000" height="1000"></canvas>
+      <div id="errorMessage" class="hidden">Invalid attack used!</div>
+    </div>
   </body>
   <script>
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
-            // Player Object
-            const player = {
-                x: canvas.width / 2,
-                y: canvas.height / 2,
-                size: 40,
-                speed: 3,
-                angle: 0, // Forward direction (in radians)
-                color: 'blue',
-                health: 10,
-            };
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    let showError = false; // Boolean value to toggle the error message
+    let lastErrorTime = 0; // Tracks the last time the error message was triggered
 
-            // Projectiles Array
-            let projectiles = [];
+    let marks = []; // Array to store marks
+    // Ball objects
+    let balls = [
+      {
+        x: 200,
+        y: 200,
+        radius: 20,
+        vx: 2,
+        vy: 1,
+        color: "blue",
+        lastHit: 0,
+        health: 10,
+      },
+      {
+        x: 400,
+        y: 200,
+        radius: 20,
+        vx: -3,
+        vy: 5,
+        color: "green",
+        lastHit: 0,
+        health: 10,
+      },
+      {
+        x: 300,
+        y: 200,
+        radius: 20,
+        vx: 5,
+        vy: -2,
+        color: "red",
+        lastHit: 0,
+        health: 10,
+      },
+    ];
+    // Particle system
+    let particles = [];
+    // Mark constructor
+    function createMark() {
+      const mark = {
+        x: Math.random() * (canvas.width - 500) + 500, // Adjusted for mark's radius
+        y: Math.random() * (canvas.height - 500) + 500, // Adjusted for mark's radius
+        opacity: 0, // Start with opacity 0 (washed out)
+        createdAt: Date.now(), // Timestamp for when the mark was created
+        lifespan: 6500, // Mark will last for 2.5 seconds
+        someBS: "test",
+        radius: 300,
+        isActive: false, // Mark is not interactable until fully faded in
+      };
 
-            // Handle player movement
-            const keys = {};
-            window.addEventListener('keydown', (e) => {
-                keys[e.key.toLowerCase()] = true;
-            });
-            window.addEventListener('keyup', (e) => {
-                keys[e.key.toLowerCase()] = false;
-            });
+      marks.push(mark);
+    }
 
-            // Create projectiles on space press
-            function fireProjectile() {
-                const { x, y, angle } = player;
-                const size = 5;
-                const speed = 5;
-                projectiles.push({
-                x: x + Math.cos(angle) * (player.size / 2), // Start at the tip of the player
-                y: y + Math.sin(angle) * (player.size / 2),
-                angle,
-                size,
-                speed,
-                });
-            }
+    // Update all marks, fade in and check for collision with player
+    function updateMarks() {
+      const currentTime = Date.now();
 
-            // Update projectiles
-            function updateProjectiles() {
-                projectiles = projectiles.filter(
-                (p) => p.x > 0 && p.x < canvas.width && p.y > 0 && p.y < canvas.height // Remove off-screen projectiles
-                );
+      marks = marks.filter((mark) => {
+        const age = currentTime - mark.createdAt;
 
-                for (let p of projectiles) {
-                p.x += Math.cos(p.angle) * p.speed;
-                p.y += Math.sin(p.angle) * p.speed;
-                }
-            }
+        // Update opacity (fade in for first 0.5 seconds)
+        if (age < 500) {
+          mark.opacity = age / 1500; // Gradually increase opacity over 0.5 seconds
+        } else if (age < 2500) {
+          // mark.opacity = 1; // Full opacity after 0.5 seconds
+          mark.isActive = true; // Mark is now interactable
+          mark.color = "red";
+        }
+        if (age >= 6000) {
+          marks = marks.filter((m) => m !== mark); // Remove the mark after collision
+          return false;
+        }
 
-            // Draw projectiles
-            function drawProjectiles() {
-                for (let p of projectiles) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = 'red';
-                ctx.fill();
-                ctx.closePath();
-                }
-            }
+        // Check collision with player (same logic as handlePlayerCollisions)
+        if (
+          mark.isActive &&
+          isCircleColliding(
+            { x: player.x, y: player.y, radius: player.size / 2 },
+            mark,
+          )
+        ) {
+          player.health -= 5; // Damage player by 5
+          handlePlayerDamage();
+        }
 
-            // Handle player controls
-            function updatePlayer() {
-                  if (keys['w']) {
-                    player.x += Math.cos(player.angle) * player.speed;
-                    player.y += Math.sin(player.angle) * player.speed;
-                  }
-                  if (keys['s']) {
-                    player.x -= Math.cos(player.angle) * player.speed;
-                    player.y -= Math.sin(player.angle) * player.speed;
-                  }
-                  if (keys['a']) {
-                    player.angle -= 0.05; // Rotate left
-                  }
-                  if (keys['d']) {
-                    player.angle += 0.05; // Rotate right
-                  }
+        return true;
+      });
+    }
+    function drawMarks() {
+      for (let mark of marks) {
+        let markRadius = 100;
+        ctx.beginPath();
+        // ctx.arc(mark.x, mark.y, markRadius, 0, Math.PI * 2); // Draw a circle with radius 10
+        ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2); // Draw a circle with radius 10
 
-                  // Boundaries check
-                  player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
-                  player.y = Math.max(player.size / 2, Math.min(canvas.height - player.size / 2, player.y));
+        // ctx.fillStyle = `rgba(0, 0, 0, ${mark.opacity})`; // Black color with opacity
 
-                  // Fire projectile
-                  if (keys[' ']) {
-                    fireProjectile();
-                    keys[' '] = false; // Prevent continuous firing
-                  }
-                }
+        // Set color based on mark's age
+        if (mark.color === "red") {
+          ctx.fillStyle = `rgba(255, 0, 0, ${mark.opacity})`; // Red color
+        } else {
+          ctx.fillStyle = `rgba(0, 0, 0, ${mark.opacity})`; // Default color (black)
+        }
+        ctx.fill();
+      }
+    }
 
-            // Draw player
-            function drawPlayer() {
-                ctx.save();
-                ctx.translate(player.x, player.y);
-                ctx.rotate(player.angle);
+    setInterval(createMark, 3000); // Spawn a mark every 3 seconds
 
-                // Draw the square
-                ctx.fillStyle = player.color;
-                ctx.fillRect(-player.size / 2, -player.size / 2, player.size, player.size);
+    let canControl = true; // Flag to allow/disallow controls
+    let timeoutId; // To store the setTimeout reference for clearing the timeout if needed
+    let isGameOver = false; // Flag to track if the game is over
 
-                // Draw forward marker
-                ctx.beginPath();
-                ctx.moveTo(0, -player.size / 2); // Forward point
-                ctx.lineTo(0, player.size / 2); // Back line
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.restore();
-            }
+    // Projectiles Array
+    let projectiles = [];
 
-            // Ball objects
-            let balls = [
-                { x: 200, y: 200, radius: 20, vx: 2, vy: 3, color: 'blue' },
-                { x: 400, y: 200, radius: 20, vx: -3, vy: 2, color: 'green' },
-            ];
+    // Mouse position
+    let mouseX = 0;
+    let mouseY = 0;
 
+    // Player Object
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 40,
+      speed: 4,
+      angle: 0, // Forward direction (in radians)
+      color: "blue",
+      health: 10,
+      offense: "projectile",
+      defense: "projectile",
+      lives: 3,
+    };
 
-            // Particle system
-            let particles = [];
+    // Handle player movement
+    const keys = {};
+    window.addEventListener("keydown", (e) => {
+      keys[e.key.toLowerCase()] = true;
+    });
+    window.addEventListener("keyup", (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
 
-            function createParticles(x, y, count = 50) {
-                for (let i = 0; i < count; i++) {
-                particles.push({
-                    x,
-                    y,
-                    vx: Math.random() * 4 - 2, // Random horizontal speed
-                    vy: Math.random() * 4 - 2, // Random vertical speed
-                    life: 100, // Particle lifespan
-                });
-                }
-            }
+    // Handle player controls
+    function updatePlayer() {
+      if (!canControl || isGameOver) return; // Skip if the game is over or controls are disabled
 
-            // Update particle positions
-            function updateParticles() {
-                particles = particles.filter((p) => p.life > 0); // Remove dead particles
-                for (let p of particles) {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                }
-            }
+      // Calculate the angle between the player and the mouse
+      player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
 
-            // Draw particles
-            function drawParticles() {
-                for (let p of particles) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 165, 0, ${p.life / 100})`; // Fade out
-                ctx.fill();
-                ctx.closePath();
-                }
-            }
+      // Move player based on keyboard input
+      if (keys["w"]) {
+        player.x += Math.cos(player.angle) * player.speed;
+        player.y += Math.sin(player.angle) * player.speed;
+      }
+      if (keys["s"]) {
+        player.x -= Math.cos(player.angle) * player.speed;
+        player.y -= Math.sin(player.angle) * player.speed;
+      }
 
-            // Detect collision between two circles
-            function isCircleColliding(a, b) {
-            const dx = a.x - b.x;
-            const dy = a.y - b.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance < a.radius + b.radius;
-            }
+      // Boundaries check
+      player.x = Math.max(
+        player.size / 2,
+        Math.min(canvas.width - player.size / 2, player.x),
+      );
+      player.y = Math.max(
+        player.size / 2,
+        Math.min(canvas.height - player.size / 2, player.y),
+      );
 
-            // Detect collision between player and balls
-            function isPlayerColliding(ball) {
-                const dx = ball.x - player.x;
-                const dy = ball.y - player.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                return distance < ball.radius + player.size / 2;
-            }
+      // Response to player pressing space bar
+      if (keys[" "]) {
+        // probably activate a dodge or dash on space bar
+        keys[" "] = false; // Prevent continuous firing
+      }
 
-            // Handle collisions between balls
-            function handleBallBallCollisions() {
-                for (let i = 0; i < balls.length; i++) {
-                for (let j = i + 1; j < balls.length; j++) {
-                    if (isCircleColliding(balls[i], balls[j])) {
-                    // Reverse velocities for simple collision response
-                    const tempVx = balls[i].vx;
-                    const tempVy = balls[i].vy;
-                    balls[i].vx = balls[j].vx;
-                    balls[i].vy = balls[j].vy;
-                    balls[j].vx = tempVx;
-                    balls[j].vy = tempVy;
-                    }
-                }
-                }
-            }
+      if (firing) {
+        fireProjectile();
+      }
+    }
 
-            // Handle collisions with player
-            function handlePlayerCollisions() {
-                balls.forEach((ball) => {
-                    if (isPlayerColliding(ball)) {
-                    player.health -= 2;
+    // Handle player collision and death
+    function handlePlayerDamage() {
+      player.health--;
+      if (player.health <= 0) {
+        createBloodSplatterEffect(player.x, player.y);
+        // player.health = 0;
+        player.lives--;
+        resetPlayer(); // Reset player to the center of the canvas
 
-                    // Reverse ball direction
-                    ball.vx *= -1;
-                    ball.vy *= -1;
+        // Disable controls for 2 seconds after player death
+        canControl = false;
 
-                    // Reset player if health is 0
-                    if (player.health <= 0) {
-                        player.health = 10;
-                        player.x = canvas.width / 2;
-                        player.y = canvas.height / 2;
-                    }
-                    }
-                });
-            }
+        if (player.lives <= 0) {
+          // If player has no lives left, freeze the game and show the respawn button
+          isGameOver = true;
+          showRespawnButton(); // Show the respawn button
+        } else {
+          // Disable controls for 2 seconds after player death
+          canControl = false;
+          timeoutId = setTimeout(() => {
+            canControl = true; // Re-enable controls after timeout
+          }, 2000); // 2000ms = 2 seconds
+        }
 
-            // Check for collision between two balls
-            function isColliding(ball1, ball2) {
-                let dx = ball1.x - ball2.x;
-                let dy = ball1.y - ball2.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-                return distance < ball1.radius + ball2.radius;
-            }
+        // // Re-enable controls after 2 seconds
+        // timeoutId = setTimeout(() => {
+        //   canControl = true; // Re-enable controls after timeout
+        // }, 2000); // 2000ms = 2 seconds
+      }
+    }
 
-            // Update ball positions and handle collisions
-            // function updateBalls() {
-            //     for (let i = 0; i < balls.length; i++) {
-            //         let ball = balls[i];
+    function resetPlayer() {
+      // Reset player position to the center of the canvas
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
 
-            //         // Update position
-            //         ball.x += ball.vx;
-            //         ball.y += ball.vy;
+      // Optionally, reset player health or other properties if needed
+      player.health = 10; // Assuming the player starts with 10 health
+      player.lastHitTime = 0; // Reset the cooldown timer if necessary
+    }
 
-            //         // Bounce off walls
-            //         if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
-            //             ball.vx *= -1;
-            //         }
-            //         if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-            //             ball.vy *= -1;
-            //         }
+    // Create projectiles on space press
+    function fireProjectile() {
+      const { x, y, angle } = player;
+      const size = 10;
+      const speed = player.speed * 1.5;
+      projectiles.push({
+        x: x + Math.cos(angle) * (player.size / 2), // Start at the tip of the player
+        y: y + Math.sin(angle) * (player.size / 2),
+        angle,
+        size,
+        speed,
+      });
+    }
 
-            //         // Check for collisions with other balls
-            //         for (let j = i + 1; j < balls.length; j++) {
-            //             let otherBall = balls[j];
-            //             if (isColliding(ball, otherBall)) {
-            //                 // Simple velocity reversal on collision
-            //                 ball.vx *= -1;
-            //                 ball.vy *= -1;
-            //                 otherBall.vx *= -1;
-            //                 otherBall.vy *= -1;
+    // Update projectiles
+    function updateProjectiles() {
+      projectiles = projectiles.filter(
+        (p) => p.x > 0 && p.x < canvas.width && p.y > 0 && p.y < canvas.height, // Remove off-screen projectiles
+      );
 
-            //                 // Create particles at collision point
-            //                 createParticles((ball.x + otherBall.x) / 2, (ball.y + otherBall.y) / 2);
-            //             }
-            //         }
-            //     }
-            // }
-            function updateBalls() {
+      for (let p of projectiles) {
+        p.x += Math.cos(p.angle) * p.speed;
+        p.y += Math.sin(p.angle) * p.speed;
+      }
+    }
+
+    // Draw projectiles
+    function drawProjectiles() {
+      for (let p of projectiles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+
+    // Listen for mouse movement to track the mouse position
+    canvas.addEventListener("mousemove", (event) => {
+      mouseX = event.clientX - canvas.offsetLeft; // Adjust for canvas position
+      mouseY = event.clientY - canvas.offsetTop; // Adjust for canvas position
+    });
+
+    /*
+     *
+     * the beginning of handling player attacks
+     */
+    let firing = false; // Track if the player is firing
+
+    // Listen for left mouse button click (mousedown event)
+    canvas.addEventListener("mousedown", (event) => {
+      if (event.button === 0) {
+        // Left mouse button clicked
+        firing = true;
+      }
+    });
+
+    // Listen for mouse up event to stop firing (optional)
+    canvas.addEventListener("mouseup", (event) => {
+      if (event.button === 0) {
+        // Left mouse button released
+        firing = false;
+      }
+    });
+
+    // Draw player
+    function drawPlayer() {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.angle);
+
+      if (Date.now() - player.lastHitTime < 1500) {
+        ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
+      } else {
+        ctx.fillStyle = player.color;
+      }
+      // Draw the square
+      // ctx.fillStyle = player.color;
+      ctx.fillRect(
+        -player.size / 2,
+        -player.size / 2,
+        player.size,
+        player.size,
+      );
+
+      // Draw forward marker
+      ctx.beginPath();
+      ctx.moveTo(0, -player.size / 2); // Forward point
+      ctx.lineTo(0, player.size / 2); // Back line
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function generateBalls() {
       balls.forEach((ball) => {
+        if (ball.color === "green") {
+          ball.offense = "projectile";
+          ball.defense = "magic";
+        } else if (ball.color === "blue") {
+          ball.offense = "melee";
+          ball.defense = "projectile";
+        } else if (ball.color === "red") {
+          ball.offense = "melee";
+          ball.defense = "magic";
+        }
+      });
+    }
+    generateBalls();
+
+    function createParticles(x, y, count = 50) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x,
+          y,
+          vx: Math.random() * 4 - 2, // Random horizontal speed
+          vy: Math.random() * 4 - 2, // Random vertical speed
+          life: 100, // Particle lifespan
+          lifetime: Math.random() * 20 + 10, // Random lifespan between 10 and 30 frames
+          decayRate: 0.05, // Rate at which the particle fades,
+          color: "rgba(255, 165, 0, 1dw)",
+        });
+      }
+    }
+
+    // Blood splatter particle object
+    function createBloodSplatter(x, y) {
+      const bloodParticle = {
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 4, // Random X velocity
+        vy: (Math.random() - 0.5) * 4, // Random Y velocity
+        radius: Math.random() * 5 + 2, // Random radius between 2 and 7
+        color: `rgba(255, 0, 0, ${Math.random() * 0.8 + 0.2})`, // Random red with alpha
+        lifetime: Math.random() * 20 + 10, // Random lifespan between 10 and 30 frames
+        decayRate: 0.05, // Rate at which the particle fades
+      };
+
+      return bloodParticle;
+    }
+
+    // Update blood particles (move, fade, and remove them when they're done)
+    function updateParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+
+        // Move the particle
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+
+        // Decay the particle (shrink size and reduce opacity)
+        particle.lifetime -= particle.decayRate;
+
+        // Remove particle if lifetime is over
+        if (particle.lifetime <= 0) {
+          particles.splice(i, 1); // Remove the particle from the array
+        }
+      }
+    }
+
+    // Draw particles
+    function drawParticles() {
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 4);
+        ctx.fillStyle = `rgba(255, 165, 0, ${p.life / 100})`; // Fade out
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+
+    // Draw blood splatter particles
+    function drawBloodParticles() {
+      for (let particle of particles) {
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = particle.color;
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+
+    // Detect collision between two circles
+    function isCircleColliding(circle1, circle2) {
+      if (circle2.radius && circle2.someBS) {
+        console.log("what the fuck");
+        // console.log(circle1);
+      }
+      const dx = circle1.x - circle2.x;
+      const dy = circle1.y - circle2.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (circle2.someBS) {
+        console.log(circle2);
+        console.log({ distance });
+      }
+      return distance < circle1.radius + circle2.radius; //makes sense that this would work..
+    }
+
+    // Detect collision between two circles
+    function isProjectileColliding(circle1, circle2) {
+      const dx = circle1.x - circle2.x;
+      // console.log({circle1});
+      const dy = circle1.y - circle2.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      // console.log({distance});
+      // console.log("math: " , circle1.radius)
+      return distance < circle1.radius + circle2.radius;
+    }
+
+    // Handle collisions between balls
+    function handleBallBallCollisions() {
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          if (isCircleColliding(balls[i], balls[j])) {
+            // Reverse velocities for simple collision response
+            const tempVx = balls[i].vx;
+            const tempVy = balls[i].vy;
+            balls[i].vx = balls[j].vx;
+            balls[i].vy = balls[j].vy;
+            balls[j].vx = tempVx;
+            balls[j].vy = tempVy;
+          }
+        }
+      }
+    }
+
+    // // Handle collisions with player
+    function handlePlayerCollisions() {
+      const currentTime = Date.now();
+      const playerRadius = Math.sqrt(
+        (player.size / 2) ** 2 + (player.size / 2) ** 2,
+      );
+
+      for (let ball of balls) {
+        //convert the radius that was calculated in order to calculate collision of radius's
+        if (
+          isCircleColliding(
+            { x: player.x, y: player.y, radius: playerRadius },
+            ball,
+          )
+        ) {
+          // Check for cooldown
+          if (!ball.lastHit || currentTime - ball.lastHit > 1500) {
+            player.health -= 2; // Reduce player health
+            createParticles(ball.x, ball.y); // Create particles at collision point
+            ball.lastHit = currentTime; // Set cooldown timestamp
+            ball.health -= 2; // Reduce ball health by 2
+
+            // Update the player's last hit time to initiate the invincibility period
+            player.lastHitTime = currentTime;
+
+            if (player.health <= 0) {
+              createBloodSplatterEffect(player.x, player.y);
+              player.health = 0;
+              resetPlayer(); // Reset player to the center of the canvas
+            }
+
+            if (ball.health <= 0) {
+              ball.health = 0;
+              handleBallDestruction(ball); // Handle ball destruction (optional)
+            }
+          }
+        }
+      }
+      for (let mark of marks) {
+        if (
+          mark.isActive &&
+          isCircleColliding(
+            { x: player.x, y: player.y, radius: playerRadius },
+            mark,
+          )
+        ) {
+          player.health -= 5; // Player takes 5 damage
+          createParticles(mark.x, mark.y); // Optional: Create particles at collision point
+
+          if (player.health <= 0) {
+            createBloodSplatterEffect(player.x, player.y);
+            player.health = 0;
+            resetPlayer(); // Reset player to the center of the canvas
+          }
+          // marks = marks.filter((m) => m !== mark); // Remove mark after collision
+        }
+      }
+    }
+
+    // Create multiple blood splatter particles
+    function createBloodSplatterEffect(x, y) {
+      for (let i = 0; i < 20; i++) {
+        // Create 20 particles
+        particles.push(createBloodSplatter(x, y)); // Add the particle to the particles array
+      }
+    }
+
+    // Check for collision between two balls
+    function isColliding(ball1, ball2) {
+      let dx = ball1.x - ball2.x;
+      let dy = ball1.y - ball2.y;
+      let distance = Math.sqrt(dx * dx + dy * dy);
+      return distance < ball1.radius + ball2.radius;
+    }
+
+    // Update ball positions and handle collisions
+    function updateBalls() {
+      for (let i = 0; i < balls.length; i++) {
+        let ball = balls[i];
+
+        // Update position
         ball.x += ball.vx;
         ball.y += ball.vy;
 
@@ -269,62 +557,199 @@
         if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
           ball.vy *= -1;
         }
-         // Check for collisions with other balls
-                    for (let j = i + 1; j < balls.length; j++) {
-                        let otherBall = balls[j];
-                        if (isColliding(ball, otherBall)) {
-                            // Simple velocity reversal on collision
-                            ball.vx *= -1;
-                            ball.vy *= -1;
-                            otherBall.vx *= -1;
-                            otherBall.vy *= -1;
 
-                            // Create particles at collision point
-                            createParticles((ball.x + otherBall.x) / 2, (ball.y + otherBall.y) / 2);
-                        }
-                    }
+        // Check for collisions with other balls
+        for (let j = i + 1; j < balls.length; j++) {
+          let otherBall = balls[j];
+          if (isColliding(ball, otherBall)) {
+            // Simple velocity reversal on collision
+            ball.vx *= -1;
+            ball.vy *= -1;
+            otherBall.vx *= -1;
+            otherBall.vy *= -1;
+
+            // Create particles at collision point
+            createParticles(
+              (ball.x + otherBall.x) / 2,
+              (ball.y + otherBall.y) / 2,
+            );
+          }
+        }
+      }
+    }
+
+    // Draw balls
+    function drawBalls() {
+      for (let ball of balls) {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+        ctx.closePath();
+
+        // Draw health bar above the ball
+        const healthBarWidth = ball.radius * 2 + ball.radius / 2; // Width of the health bar
+        const healthBarHeight = 10; // Height of the health bar
+        const healthBarX = ball.x - healthBarWidth / 2; // Position horizontally centered on the ball
+        const healthBarY = ball.y - ball.radius - 12; // Position the health bar above the ball
+        const healthBarFill = (ball.health / 10) * healthBarWidth; // Proportional fill based on health
+
+        // Draw the background of the health bar (empty bar)
+        ctx.fillStyle = "#000"; // Black background for the health bar
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+        // Draw the filled portion of the health bar (green for health)
+        ctx.fillStyle = "red";
+        ctx.fillRect(healthBarX, healthBarY, healthBarFill, healthBarHeight);
+      }
+    }
+
+    // Draw health
+    function drawHealth() {
+      ctx.fillStyle = "black";
+      ctx.font = "20px Arial";
+      ctx.fillText(`Health: ${player.health} \n Lives: ${player.lives}`, 10, 30);
+    }
+
+    function checkCombatTriangle(attackStyle, defenseStyle) {
+      return attackStyle !== defenseStyle;
+    }
+
+    function toggleAttackStyleErrorMessage() {
+      const errorMessageDiv = document.getElementById("errorMessage");
+      const currentTime = Date.now(); // Get the current time in milliseconds
+
+      // If the error message is not currently showing OR 3 seconds have passed since last shown
+      if (!showError && currentTime - lastErrorTime >= 1000) {
+        showError = true;
+        lastErrorTime = currentTime; // Update the last error time
+        errorMessageDiv.textContent =
+          "Target defence blocked your attack! Invalid attack used!";
+        errorMessageDiv.classList.remove("hidden");
+        errorMessageDiv.classList.add("visible");
+
+        // Hide the error message after 2 seconds
+        setTimeout(() => {
+          showError = false;
+          errorMessageDiv.classList.remove("visible");
+          errorMessageDiv.classList.add("hidden");
+        }, 2000);
+      }
+    }
+
+    // toggleErrorMessage("The defense blocked your attack!");
+
+    // Handle player projectile collision with balls
+    function handleProjectileCollisions() {
+      for (let i = 0; i < projectiles.length; i++) {
+        const currentProjectile = projectiles[i];
+        //calculate radius of the non circle object
+        const projectileRadius = Math.sqrt(
+          (currentProjectile.size / 2) ** 2 + (currentProjectile.size / 2) ** 2,
+        );
+
+        // for (let projectile of projectiles) {
+        for (let ball of balls) {
+          //convert the radius that was calculated in order to calculate collision of radius's
+          if (
+            isProjectileColliding(
+              {
+                x: currentProjectile.x,
+                y: currentProjectile.y,
+                radius: projectileRadius,
+              },
+              ball,
+            )
+          ) {
+            if (checkCombatTriangle("projectile", ball.defense)) {
+              console.log(
+                `The attack style was "projectile" and the defence style was ${ball.defense}`,
+              );
+              ball.health -= 2; // Reduce ball health by 2 on projectile hit
+            } else {
+              toggleAttackStyleErrorMessage();
+            }
+
+            createParticles(ball.x, ball.y); // Create particles at the collision point
+            removeProjectile(projectiles[i]); // Remove the projectile after collision
+            if (ball.health <= 0) {
+              ball.health = 0;
+              handleBallDestruction(ball); // Handle ball destruction (optional)
+            }
+          }
+        }
+      }
+    }
+
+    // Function to remove a projectile from the projectiles array
+    function removeProjectile(index) {
+      // Remove the projectile at the specified index
+      projectiles.splice(index, 1);
+    }
+
+    // Optional: Handle ball destruction (e.g., remove the ball when its health reaches 0)
+    function handleBallDestruction(ball) {
+      const index = balls.indexOf(ball);
+      if (index > -1) {
+        balls.splice(index, 1); // Remove ball from array
+      }
+    }
+
+    // Show respawn button
+    function showRespawnButton() {
+      const respawnButton = document.createElement("button");
+      respawnButton.innerText = "Respawn";
+      respawnButton.style.position = "absolute";
+      respawnButton.style.top = "50%";
+      respawnButton.style.left = "50%";
+      respawnButton.style.transform = "translate(-50%, -50%)";
+      respawnButton.style.padding = "10px 20px";
+      respawnButton.style.fontSize = "20px";
+      document.body.appendChild(respawnButton);
+
+      respawnButton.addEventListener("click", () => {
+        respawnGame();
+        document.body.removeChild(respawnButton); // Remove the respawn button after clicking
       });
     }
-            // Draw balls
-            function drawBalls() {
-                for (let ball of balls) {
-                    ctx.beginPath();
-                    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-                    ctx.fillStyle = ball.color;
-                    ctx.fill();
-                    ctx.closePath();
-                }
-            }
 
-            // Draw health
-    function drawHealth() {
-      ctx.fillStyle = 'black';
-      ctx.font = '20px Arial';
-      ctx.fillText(`Health: ${player.health}`, 10, 30);
+    // Reset the game with 3 lives
+    function respawnGame() {
+      player.lives = 3; // Reset player lives
+      player.health = 100; // Reset player health
+      isGameOver = false; // Reset game over flag
+      resetPlayer(); // Reset player position
+      // Optionally reset any other game states here
     }
 
-            // Main game loop
-            function loop() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    // Main game loop
+    function loop() {
+      if (!isGameOver) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
 
-                //update game objects
-                updatePlayer();
-                updateBalls();
-                updateParticles();
-                updateProjectiles();
-                handleBallBallCollisions();
-                handlePlayerCollisions();
+        //update game objects
+        updatePlayer();
+        updateBalls();
+        updateMarks();
+        updateParticles();
+        updateProjectiles();
+        handleBallBallCollisions();
+        handlePlayerCollisions();
+        handleProjectileCollisions();
+        //draw game objects
+        drawPlayer();
+        drawBalls();
+        drawHealth();
+        drawProjectiles();
+        drawParticles();
+        drawBloodParticles();
 
-                //draw game objects
-                drawPlayer();
-                drawBalls();
-                drawHealth();
-                drawProjectiles();
-                drawParticles();
+        drawMarks();
 
-                requestAnimationFrame(loop);
-            }
+      }
+      requestAnimationFrame(loop);
+    }
 
-            loop();
+    loop();
   </script>
 </html>
