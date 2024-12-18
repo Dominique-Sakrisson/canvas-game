@@ -737,7 +737,7 @@
       ctx.strokeStyle = fillColor; // Apply color
       ctx.stroke();
 
-      // Front/Back Features
+      if(!player.isFacingBack){// Front/Back Features
       // Front View: Draw eyes and mouth
       ctx.fillStyle = "red";
       const eyeOffset = player.size / 8 ;
@@ -765,7 +765,7 @@
       ctx.beginPath();
       ctx.arc(0, -player.size / 2 - player.size / 6 + 30, eyeRadius, 0, Math.PI); // Simple smile
       ctx.strokeStyle = "red"
-      ctx.stroke();
+      ctx.stroke();}
 
       ctx.restore();
     }
