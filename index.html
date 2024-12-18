@@ -166,12 +166,15 @@
       speed: 4,
       angle: 0, // Forward direction (in radians)
       color: "blue",
-      health: 10,
+      health: 100,
+      maxHealth: 100,
       damage: 1,
       damageStyle: "projectile",
       defenseStyle: "projectile",
       lives: 3,
-      lastHit: 0,
+      lastHit: Date.now(),
+      lastMarkHit: Date.now(),
+      damaged: false,
     };
 
     // Handle player movement
@@ -259,9 +262,10 @@
 
     // Handle player collision and death
     //handles applying status debuffs, damage, to player
+
     function handlePlayerDamage(damageRoll) {
       if (isPlayerDead) return; // Stop further execution if the player is already dead
-
+      console.log(damageRoll);
       //check the damage triangle
       const combatCheck = checkCombatTriangle(
         damageRoll.damageStyle,
@@ -310,7 +314,7 @@
       player.y = canvas.height / 2;
 
       // Optionally, reset player health or other properties if needed
-      player.health = player.health || 10; // Assuming the player starts with 10 health
+      player.health = player.maxHealth; // Assuming the player starts with 10 health
       player.lastHitTime = 0; // Reset the cooldown timer if necessary
       marks = [];
       isPlayerDead = false; // Re-enable damage handling
@@ -331,24 +335,6 @@
         speed,
       });
     }
-
-    // Update function to move the melee strike
-    // function updateMeleeStrikes() {
-    //   for (let i = 0; i < meleeStrikes.length; i++) {
-    //     const attack = meleeStrikes[i];
-    //     console.log({ attack });
-    //     // Move the attack forward
-    //     attack.x += Math.cos(attack.angle) * attack.speed;
-    //     attack.y += Math.sin(attack.angle) * attack.speed;
-    //     attack.distanceTraveled += attack.speed;
-
-    //     // Remove attack if it has exceeded its max distance
-    //     if (attack.distanceTraveled >= attack.maxDistance) {
-    //       meleeStrikes.splice(i, 1);
-    //       i--; // Adjust index to avoid skipping elements
-    //     }
-    //   }
-    // }
 
     // Magic Strike: Delay before activation at clicked location
     function magicStrike(event) {
@@ -499,34 +485,6 @@
     // }
 
     //=================================================================================================================
-    // Update melee strikes
-    // function updateMeleeStrikes() {
-    //   if (meleeStrikes.length) {
-    //     // console.log({meleeStrikes});
-    //   }
-    //   meleeStrikes = meleeStrikes.filter((m) => {
-    //     // Calculate the distance traveled based on start and current position
-    //     const distanceTravelled = Math.sqrt(
-    //       Math.pow(m.xStart - player.x, 2) + Math.pow(m.yStart - player.y, 2),
-    //     );
-    //     // return distanceTravelled < 400; // Remove melee strikes if it exceeds max range (400 units)
-    //     return m.attackTiming > 400; // Remove melee strikes if it exceeds max range (400 units)
-    //   });
-
-    //   // Update position and range of each melee strike
-    //   for (let m of meleeStrikes) {
-    //     const deltaX = Math.cos(m.angle) * m.speed;
-    //     const deltaY = Math.sin(m.angle) * m.speed;
-    //     // console.log(`is something wrong with ${deltaX}`);
-    //     // Update the strike's starting position
-    //     // m.xStart += deltaX;
-    //     // m.yStart += deltaY;
-
-    //     // Calculate the new endpoint of the melee strike
-    //     m.xEnd = m.xStart + Math.cos(m.angle) * 200; // Max range
-    //     m.yEnd = m.yStart + Math.sin(m.angle) * 200;
-    //   }
-    // }
 
     //===========================================================================================
     function updateMeleeStrikes() {
@@ -551,12 +509,9 @@
           );
 
           const combatTimer = Date.now() - ball.lastHit > 500; //verifies that damage is dealt in 800ms blocks
-          console.log({ combatTimer });
           // If distance is less than the ball's radius, deal damage
           if (distance < ball.radius && combatTimer) {
             ball.lastHit = Date.now();
-
-            console.log("Ball hit by melee strike!");
 
             // Handle damage to ball or other game logic
 
@@ -636,22 +591,21 @@
       // Translate to the character's position
       ctx.translate(character.x, character.y);
 
-      console.log(character.angle);
       ctx.rotate(character.angle);
 
       if (character.angle < 3.14 && character.angle > 1.7) {
         // Rotate player based on the angle (no added Math.PI)
         // ctx.rotate(2 *character.angle);
-         ctx.scale(1, -1); // Flip horizontally
-      } 
-       if (character.angle > -3.14 && character.angle < -1.97) {
+        ctx.scale(1, -1); // Flip horizontally
+      }
+      if (character.angle > -3.14 && character.angle < -1.97) {
         // ctx.scale(1, -1); // Flip horizontally
         // ctx.rotate(-character.angle);
-      } 
+      }
       if (character.angle >= -1.7 && character.angle < -0.01) {
         ctx.scale(1, -1); // Flip horizontally
         // ctx.rotate(-character.angle);
-      } 
+      }
       // else {
       //   ctx.rotate(character.angle);
       //   // ctx.scale(1, -1); // Flip horizontally
@@ -737,35 +691,43 @@
       ctx.strokeStyle = fillColor; // Apply color
       ctx.stroke();
 
-      if(!player.isFacingBack){// Front/Back Features
-      // Front View: Draw eyes and mouth
-      ctx.fillStyle = "red";
-      const eyeOffset = player.size / 8 ;
-      const eyeRadius = player.size / 12;
+      if (!player.isFacingBack) {
+        // Front/Back Features
+        // Front View: Draw eyes and mouth
+        ctx.fillStyle = "red";
+        const eyeOffset = player.size / 8;
+        const eyeRadius = player.size / 12;
 
-      // Eyes
-      ctx.beginPath();
-      ctx.arc(
-        -eyeOffset,
-        -player.size / 2 - player.size / 4 + 25,
-        eyeRadius,
-        0,
-        Math.PI * 2,
-      ); // Left eye
-      ctx.arc(
-        eyeOffset,
-        -player.size / 2 - player.size / 4 + 25,
-        eyeRadius,
-        0,
-        Math.PI * 2,
-      ); // Right eye
-      ctx.fill();
+        // Eyes
+        ctx.beginPath();
+        ctx.arc(
+          -eyeOffset,
+          -player.size / 2 - player.size / 4 + 25,
+          eyeRadius,
+          0,
+          Math.PI * 2,
+        ); // Left eye
+        ctx.arc(
+          eyeOffset,
+          -player.size / 2 - player.size / 4 + 25,
+          eyeRadius,
+          0,
+          Math.PI * 2,
+        ); // Right eye
+        ctx.fill();
 
-      // Mouth
-      ctx.beginPath();
-      ctx.arc(0, -player.size / 2 - player.size / 6 + 30, eyeRadius, 0, Math.PI); // Simple smile
-      ctx.strokeStyle = "red"
-      ctx.stroke();}
+        // Mouth
+        ctx.beginPath();
+        ctx.arc(
+          0,
+          -player.size / 2 - player.size / 6 + 30,
+          eyeRadius,
+          0,
+          Math.PI,
+        ); // Simple smile
+        ctx.strokeStyle = "red";
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
@@ -987,17 +949,21 @@
       );
 
       for (let ball of balls) {
-        const combatTimer = Date.now() - player.lastHit > 1200; //verifies that damage is dealt in 800ms blocks
+        let now = Date.now();
+        const combatTimer = now - player.lastHit > 200; //verifies that damage is dealt in 800ms blocks
 
+        console.log(combatTimer);
         //convert the radius that was calculated in order to calculate collision of radius's
         if (
-          combatTimer &&
           isCircleColliding(
             { x: player.x, y: player.y, radius: playerRadius },
             ball,
           )
         ) {
           // Check for cooldown
+          if (!combatTimer) return;
+          now = Date.now();
+          player.lastHit = now;
           // if (!ball.lastHit || currentTime - ball.lastHit > 1500) {
           const damageRoll = {
             damage: ball.damage,
@@ -1032,15 +998,19 @@
         }
       }
       for (let mark of marks) {
-        const combatTimer = Date.now() - player.lastHit > 800; //verifies that damage is dealt in 800ms blocks
+        // const combatTimer = Date.now() - player.lastHit > 800; //verifies that damage is dealt in 800ms blocks
+        let now = Date.now();
+        const combatTimer = now - player.lastMarkHit > 50;
         if (
           mark.isActive &&
-          combatTimer &&
           isCircleColliding(
             { x: player.x, y: player.y, radius: playerRadius },
             mark,
           )
         ) {
+          if(!combatTimer) return;
+          now = Date.now();
+          player.lastMarkHit = now;
           const damageRoll = {
             damage: mark.damage,
             damageStyle: mark.damageStyle,
