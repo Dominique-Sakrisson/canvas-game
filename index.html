@@ -17,7 +17,7 @@
     import { meleeStrike } from "./character_attacks.js";
     const canvas = document.getElementById("gameCanvas");
     const weaponBox = document.getElementById("weapon");
-    weaponBox.classList.add("green")
+    weaponBox.classList.add("green");
     const ctx = canvas.getContext("2d");
     let currentLevel = 1;
 
@@ -147,10 +147,21 @@
     let mouseX = 0;
     let mouseY = 0;
 
+    // Character properties
+    const character = {
+      x: 200,
+      y: 200,
+      width: 50,
+      height: 100,
+      speed: 5,
+    };
+
     // Player Object
     const player = {
       x: canvas.width / 2,
       y: canvas.height / 2,
+      width: 50,
+      height: 100,
       size: 40,
       speed: 4,
       angle: 0, // Forward direction (in radians)
@@ -173,11 +184,28 @@
     });
 
     // Handle player controls
-    function updatePlayer() {
+    function updatePlayer(player) {
       if (!canControl || isGameOver) return; // Skip if the game is over or controls are disabled
 
+      // // Calculate the angle between the player and the mouse
+      // player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+
       // Calculate the angle between the player and the mouse
-      player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+      const angleToMouse = Math.atan2(mouseY - player.y, mouseX - player.x);
+      player.angle = angleToMouse;
+
+      // // Determine whether the player is facing forward or backward
+      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
+      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
+
+      // Check if the mouse is above the player (on the Y-axis)
+      player.isFacingBack = mouseY < player.y;
+
+      // // Determine if the player should face back based on tightened bounds
+      // const FRONT_ANGLE_THRESHOLD = Math.PI / 2; // ±45 degrees (front-facing range)
+      // player.isFacingBack =
+      //   player.angle > FRONT_ANGLE_THRESHOLD ||
+      //   player.angle < -FRONT_ANGLE_THRESHOLD;
 
       // Move player based on keyboard input
       //move up on the canvas
@@ -186,11 +214,11 @@
       }
       //move down on the canvas
       if (keys["s"]) {
-        player.y +=  player.speed;
+        player.y += player.speed;
       }
       if (keys["a"]) {
         // Move left on the canvas
-        player.x -=  player.speed;
+        player.x -= player.speed;
       }
 
       if (keys["d"]) {
@@ -373,18 +401,18 @@
       if (player.damageStyle === "projectile") {
         player.damageStyle = "melee"; // Cycle to melee
         weaponBox.textContent = player.damageStyle;
-        weaponBox.classList.remove("green")
-        weaponBox.classList.add("red")
+        weaponBox.classList.remove("green");
+        weaponBox.classList.add("red");
       } else if (player.damageStyle === "melee") {
         player.damageStyle = "magic"; // Cycle to magic
         weaponBox.textContent = player.damageStyle;
-        weaponBox.classList.remove("red")
-        weaponBox.classList.add("blue")
+        weaponBox.classList.remove("red");
+        weaponBox.classList.add("blue");
       } else if (player.damageStyle === "magic") {
         player.damageStyle = "projectile"; // Cycle back to projectile
         weaponBox.textContent = player.damageStyle;
-        weaponBox.classList.remove("blue")
-        weaponBox.classList.add("green")
+        weaponBox.classList.remove("blue");
+        weaponBox.classList.add("green");
       }
       console.log(`Current Weapon: ${player.damageStyle}`); // Log the current weapon for debugging
     }
@@ -603,35 +631,175 @@
       }
     });
 
-    // Draw player
-    function drawPlayer() {
+    function drawPlayer(ctx, character) {
       ctx.save();
-      ctx.translate(player.x, player.y);
-      ctx.rotate(player.angle);
+      // Translate to the character's position
+      ctx.translate(character.x, character.y);
 
-      if (Date.now() - player.lastHitTime < 1500) {
-        ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
-      } else {
-        ctx.fillStyle = player.color;
+      console.log(character.angle);
+      ctx.rotate(character.angle);
+
+      if (character.angle < 3.14 && character.angle > 1.7) {
+        // Rotate player based on the angle (no added Math.PI)
+        // ctx.rotate(2 *character.angle);
+         ctx.scale(1, -1); // Flip horizontally
+      } 
+       if (character.angle > -3.14 && character.angle < -1.97) {
+        // ctx.scale(1, -1); // Flip horizontally
+        // ctx.rotate(-character.angle);
+      } 
+      if (character.angle >= -1.7 && character.angle < -0.01) {
+        ctx.scale(1, -1); // Flip horizontally
+        // ctx.rotate(-character.angle);
+      } 
+      // else {
+      //   ctx.rotate(character.angle);
+      //   // ctx.scale(1, -1); // Flip horizontally
+      // }
+
+      // Apply horizontal flip for back-facing orientation
+      // if (character.isFacingBack) {
+      //   ctx.scale(1, -1); // Flip horizontally
+      // }sadss
+
+      // Set color based on mouse position
+
+      // // Flip horizontally when showing the back
+      if (player.isFacingBack) {
+        ctx.scale(1, -1); // Mirror vertically to represent the back
+        // } else {
       }
-      // Draw the square
-      // ctx.fillStyle = player.color;
-      ctx.fillRect(
-        -player.size / 2,
-        -player.size / 2,
-        player.size,
-        player.size,
-      );
 
-      // Draw forward marker
+      // ctx.rotate(character.angle);
+      let fillColor = player.color;
+      // Change the fill style if recently hit
+      if (Date.now() - character.lastHitTime < 1500) {
+        ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
+      } else if (character.isFacingBack) {
+        fillColor = "black";
+        ctx.fillStyle = fillColor; // Turn black when the mouse is above
+      } else {
+        ctx.fillStyle = character.color;
+      }
+
+      // Draw the head (circle)
       ctx.beginPath();
-      ctx.moveTo(0, -player.size / 2); // Forward point
-      ctx.lineTo(0, player.size / 2); // Back line
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
+      // ctx.arc(0, -character.height / 2, 15, 0, Math.PI * 2); // Centered around transformed origin
+      ctx.arc(0, 0, 15, 0, Math.PI * 2); // Draw the head at the origin (the new translated point)
+
+      ctx.fillStyle = fillColor; // Apply color
+      ctx.fill();
       ctx.stroke();
+
+      // Draw the body (line)
+      ctx.beginPath();
+      // ctx.moveTo(0, -character.height / 2 + 15); // Start just below the head
+      // ctx.lineTo(0, character.height / 2 - 20); // Extend to the bottom of the body
+      ctx.moveTo(0, 15); // Start just below the head
+      ctx.lineTo(0, character.height / 2 - 20); // Extend to the bottom of the body
+      ctx.strokeStyle = fillColor; // Apply color
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Draw the arms (lines)
+      if (player.health >= 10) {
+        ctx.beginPath();
+        // ctx.moveTo(0, -character.height / 4); // Shoulder height
+        // ctx.lineTo(-character.width / 2, -character.height / 8); // Left arm
+        // ctx.moveTo(0, -character.height / 4);
+        // ctx.lineTo(character.width / 2, -character.height / 8); // Right arm
+        ctx.moveTo(0, 15); // Shoulder height
+        ctx.lineTo(-character.width / 2, -character.height / 8); // Left arm
+        ctx.moveTo(0, 15);
+        ctx.lineTo(character.width / 2, -character.height / 8); // Right arm
+        ctx.strokeStyle = fillColor; // Apply color
+        ctx.stroke();
+      } else if (player.health < 7) {
+        ctx.beginPath();
+        // ctx.moveTo(0, -character.height / 4); // Shoulder height
+        // ctx.lineTo(-character.width / 2, -character.height / 8); // Left arm
+        ctx.moveTo(0, 15); // Shoulder height
+        ctx.lineTo(-character.width / 2, -character.height / 8); // Left arm
+        ctx.strokeStyle = fillColor; // Apply color
+        ctx.stroke();
+      }
+
+      // Draw the legs (lines)
+      ctx.beginPath();
+      // ctx.moveTo(0, character.height / 2 - 20); // Base of the body
+      // ctx.lineTo(-character.width / 4, character.height / 2); // Left leg
+      // ctx.moveTo(0, character.height / 2 - 20);
+      // ctx.lineTo(character.width / 4, character.height / 2); // Right leg
+      ctx.moveTo(0, character.height / 2 - 20); // Base of the body
+      ctx.lineTo(-character.width / 4, character.height / 2); // Left leg
+      ctx.moveTo(0, character.height / 2 - 20);
+      ctx.lineTo(character.width / 4, character.height / 2); // Right leg
+      ctx.strokeStyle = fillColor; // Apply color
+      ctx.stroke();
+
+      // Front/Back Features
+      // Front View: Draw eyes and mouth
+      ctx.fillStyle = "red";
+      const eyeOffset = player.size / 8 ;
+      const eyeRadius = player.size / 12;
+
+      // Eyes
+      ctx.beginPath();
+      ctx.arc(
+        -eyeOffset,
+        -player.size / 2 - player.size / 4 + 25,
+        eyeRadius,
+        0,
+        Math.PI * 2,
+      ); // Left eye
+      ctx.arc(
+        eyeOffset,
+        -player.size / 2 - player.size / 4 + 25,
+        eyeRadius,
+        0,
+        Math.PI * 2,
+      ); // Right eye
+      ctx.fill();
+
+      // Mouth
+      ctx.beginPath();
+      ctx.arc(0, -player.size / 2 - player.size / 6 + 30, eyeRadius, 0, Math.PI); // Simple smile
+      ctx.strokeStyle = "red"
+      ctx.stroke();
+
       ctx.restore();
     }
+
+    // Draw player
+    // function drawPlayer() {
+    //   ctx.save();
+    //   ctx.translate(player.x, player.y);
+    //   ctx.rotate(player.angle);
+
+    //   if (Date.now() - player.lastHitTime < 1500) {
+    //     ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
+    //   } else {
+    //     ctx.fillStyle = player.color;
+    //   }
+    //   // Draw the square
+    //   // ctx.fillStyle = player.color;
+    //   ctx.fillRect(
+    //     -player.size / 2,
+    //     -player.size / 2,
+    //     player.size,
+    //     player.size,
+    //   );
+
+    //   // Draw forward marker
+    //   ctx.beginPath();
+    //   ctx.moveTo(0, -player.size / 2); // Forward point
+    //   ctx.lineTo(0, player.size / 2); // Back line
+    //   ctx.strokeStyle = "white";
+    //   ctx.lineWidth = 2;
+    //   ctx.stroke();
+    //   ctx.restore();
+    // }
+
     function getRandomNumber(min, max) {
       return Math.random() * (max - min) + min;
     }
@@ -784,8 +952,6 @@
 
     // Detect collision between two circles
     function isProjectileColliding(circle1, circle2) {
-      console.log({ circle1 });
-      console.log({ circle2 });
       const dx = circle1.x - circle2.x;
       const dy = circle1.y - circle2.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1179,7 +1345,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
 
         //update game objects
-        updatePlayer();
+        updatePlayer(player);
         updateBalls();
         updateMarks();
         updateParticles();
@@ -1190,7 +1356,10 @@
         handlePlayerCollisions();
         handleProjectileCollisions();
         //draw game objects
-        drawPlayer();
+
+        // drawCharacter(ctx, character); // Draw the character
+        drawPlayer(ctx, player); // Draw the character
+        // drawPlayer();
         drawBalls();
         drawHealth();
         drawProjectiles();

@@ -73,7 +73,7 @@
 .weaponBox::before,
 .weaponBox::after {
   content: "";
-  position: absolute;
+  /* position: absolute; */
   background-color: #8c6b3b; /* Golden brown */
   width: 10px;
   height: 10px;
@@ -93,16 +93,15 @@
 }
 
 .red {
-  border: 5px solid #9c2b2b; /* Rich red color for the red variant */
+  border: 10px solid #9c2b2b; /* Rich red color for the red variant */
 }
 
 .blue {
-  border: 5px solid #2e4a77; /* Deep blue color for the blue variant */
+  border: 10px solid #2e4a77; /* Deep blue color for the blue variant */
 }
 
 .green {
-  border: 5px solid #3b7d31; /* Earthy green color for the green variant */
-  padding: 2px;
+  border: 10px solid #3b7d31; /* Earthy green color for the green variant */
 }
 
 /* Add a decorative "Roman" metal edge effect */
