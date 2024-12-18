@@ -180,24 +180,22 @@
       player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
 
       // Move player based on keyboard input
+      //move up on the canvas
       if (keys["w"]) {
-        player.x += Math.cos(player.angle) * player.speed;
-        player.y += Math.sin(player.angle) * player.speed;
+        player.y -= player.speed;
       }
+      //move down on the canvas
       if (keys["s"]) {
-        player.x -= Math.cos(player.angle) * player.speed;
-        player.y -= Math.sin(player.angle) * player.speed;
+        player.y +=  player.speed;
       }
       if (keys["a"]) {
-        // Move left perpendicular to the player's angle
-        player.x += Math.cos(player.angle - Math.PI / 2) * player.speed;
-        player.y += Math.sin(player.angle - Math.PI / 2) * player.speed;
+        // Move left on the canvas
+        player.x -=  player.speed;
       }
 
       if (keys["d"]) {
-        // Move right perpendicular to the player's angle
-        player.x += Math.cos(player.angle + Math.PI / 2) * player.speed;
-        player.y += Math.sin(player.angle + Math.PI / 2) * player.speed;
+        // Move right on the canvas
+        player.x += player.speed;
       }
 
       // Boundaries check
