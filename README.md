@@ -7,3 +7,8 @@
 # Latest: 
 
  https://alterarpg.netlify.app/
+
+
+# changelog 
+
+https://github.com/Dominique-Sakrisson/canvas-game/commits/staging
