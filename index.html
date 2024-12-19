@@ -527,115 +527,177 @@
     }
 
     // Function to check if a line intersects a rectangle (wall)
-function lineIntersectsRect(x1, y1, x2, y2, rect) {
-  // Check if the line intersects any of the four sides of the rectangle
-  const left = rect.x, right = rect.x + rect.width, top = rect.y, bottom = rect.y + rect.height;
+    function lineIntersectsRect(x1, y1, x2, y2, rect) {
+      // Check if the line intersects any of the four sides of the rectangle
+      const left = rect.x,
+        right = rect.x + rect.width,
+        top = rect.y,
+        bottom = rect.y + rect.height;
 
-  // Check each side of the rectangle (left, right, top, bottom)
-  return (
-    lineIntersectsLine(x1, y1, x2, y2, left, top, left, bottom) || // Left
-    lineIntersectsLine(x1, y1, x2, y2, right, top, right, bottom) || // Right
-    lineIntersectsLine(x1, y1, x2, y2, left, top, right, top) || // Top
-    lineIntersectsLine(x1, y1, x2, y2, left, bottom, right, bottom) // Bottom
-  );
-}
-
-// Function to check if two lines intersect and return the point of intersection
-function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
-  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (denom === 0) return null; // Parallel lines, no intersection
-
-  const intersectX = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom;
-  const intersectY = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom;
-
-  // Check if the intersection point is within the bounds of both line segments
-  if (
-    Math.min(x1, x2) <= intersectX && intersectX <= Math.max(x1, x2) &&
-    Math.min(y1, y2) <= intersectY && intersectY <= Math.max(y1, y2) &&
-    Math.min(x3, x4) <= intersectX && intersectX <= Math.max(x3, x4) &&
-    Math.min(y3, y4) <= intersectY && intersectY <= Math.max(y3, y4)
-  ) {
-    return { x: intersectX, y: intersectY };
-  }
-  return null; // No intersection within the segment bounds
-}
-
-// Function to check if the melee strike intersects with a wall and return the intersection point
-function checkMeleeStrikeIntersection(xStart, yStart, xEnd, yEnd, wall) {
-  const wallLeft = wall.x;
-  const wallRight = wall.x + wall.width;
-  const wallTop = wall.y;
-  const wallBottom = wall.y + wall.height;
-
-  // Check each wall edge (left, right, top, bottom) for intersection with the strike
-  let intersection = null;
-  
-  // Left edge
-  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallTop, wallLeft, wallBottom);
-  if (intersection) return intersection;
-  
-  // Right edge
-  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallRight, wallTop, wallRight, wallBottom);
-  if (intersection) return intersection;
-  
-  // Top edge
-  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallTop, wallRight, wallTop);
-  if (intersection) return intersection;
-  
-  // Bottom edge
-  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallBottom, wallRight, wallBottom);
-  if (intersection) return intersection;
-  
-  return null; // No intersection
-}
-
-// Function to update melee strikes and handle wall collisions
-// Function to update melee strikes and handle wall collisions
-function updateMeleeStrikes() {
-  // Filter melee strikes based on their lifetime (within 400ms of the attack timing)
-  meleeStrikes = meleeStrikes.filter((m) => Date.now() - m.attackTiming < 400); // Lifetime of melee strike (400ms)
-
-  for (let m of meleeStrikes) {
-    // Only calculate the end position of the strike if it's within the 400ms window
-    let strikeEndX = m.xStart + Math.cos(m.angle) * 200; // Max range for line
-    let strikeEndY = m.yStart + Math.sin(m.angle) * 200;
-
-    // Check for intersection with any wall and stop the strike at the intersection point
-    let collisionPoint = null;
-    for (let wall of walls) {
-      collisionPoint = checkMeleeStrikeIntersection(m.xStart, m.yStart, strikeEndX, strikeEndY, wall);
-      if (collisionPoint) {
-        // If an intersection is detected, stop the strike at the intersection point
-        strikeEndX = collisionPoint.x;
-        strikeEndY = collisionPoint.y;
-        break; // Stop checking further walls after the first collision
-      }
+      // Check each side of the rectangle (left, right, top, bottom)
+      return (
+        lineIntersectsLine(x1, y1, x2, y2, left, top, left, bottom) || // Left
+        lineIntersectsLine(x1, y1, x2, y2, right, top, right, bottom) || // Right
+        lineIntersectsLine(x1, y1, x2, y2, left, top, right, top) || // Top
+        lineIntersectsLine(x1, y1, x2, y2, left, bottom, right, bottom) // Bottom
+      );
     }
 
-    // Update the strike's end point with the intersection point (if any)
-    m.xEnd = strikeEndX;
-    m.yEnd = strikeEndY;
+    // Function to check if two lines intersect and return the point of intersection
+    function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+      const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+      if (denom === 0) return null; // Parallel lines, no intersection
 
-    // Check for collision with balls (and handle damage as before)
-    for (let ball of balls) {
-      const distance = distanceToSegment(ball.x, ball.y, m.xStart, m.yStart, m.xEnd, m.yEnd);
-      const combatTimer = Date.now() - ball.lastHit > 200;
+      const intersectX =
+        ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) /
+        denom;
+      const intersectY =
+        ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) /
+        denom;
 
-      if (distance < ball.radius && combatTimer) {
-        ball.lastHit = Date.now();
-        if (checkCombatTriangle(player.damageStyle, ball.defense)) {
-          ball.health -= 10;
-          createParticles(ball.x, ball.y);
-        } else {
-          toggleDamageStyleErrorMessage();
+      // Check if the intersection point is within the bounds of both line segments
+      if (
+        Math.min(x1, x2) <= intersectX &&
+        intersectX <= Math.max(x1, x2) &&
+        Math.min(y1, y2) <= intersectY &&
+        intersectY <= Math.max(y1, y2) &&
+        Math.min(x3, x4) <= intersectX &&
+        intersectX <= Math.max(x3, x4) &&
+        Math.min(y3, y4) <= intersectY &&
+        intersectY <= Math.max(y3, y4)
+      ) {
+        return { x: intersectX, y: intersectY };
+      }
+      return null; // No intersection within the segment bounds
+    }
+
+    // Function to check if the melee strike intersects with a wall and return the intersection point
+    function checkMeleeStrikeIntersection(xStart, yStart, xEnd, yEnd, wall) {
+      const wallLeft = wall.x;
+      const wallRight = wall.x + wall.width;
+      const wallTop = wall.y;
+      const wallBottom = wall.y + wall.height;
+
+      // Check each wall edge (left, right, top, bottom) for intersection with the strike
+      let intersection = null;
+
+      // Left edge
+      intersection = lineIntersectsLine(
+        xStart,
+        yStart,
+        xEnd,
+        yEnd,
+        wallLeft,
+        wallTop,
+        wallLeft,
+        wallBottom,
+      );
+      if (intersection) return intersection;
+
+      // Right edge
+      intersection = lineIntersectsLine(
+        xStart,
+        yStart,
+        xEnd,
+        yEnd,
+        wallRight,
+        wallTop,
+        wallRight,
+        wallBottom,
+      );
+      if (intersection) return intersection;
+
+      // Top edge
+      intersection = lineIntersectsLine(
+        xStart,
+        yStart,
+        xEnd,
+        yEnd,
+        wallLeft,
+        wallTop,
+        wallRight,
+        wallTop,
+      );
+      if (intersection) return intersection;
+
+      // Bottom edge
+      intersection = lineIntersectsLine(
+        xStart,
+        yStart,
+        xEnd,
+        yEnd,
+        wallLeft,
+        wallBottom,
+        wallRight,
+        wallBottom,
+      );
+      if (intersection) return intersection;
+
+      return null; // No intersection
+    }
+
+    // Function to update melee strikes and handle wall collisions
+    // Function to update melee strikes and handle wall collisions
+    function updateMeleeStrikes() {
+      // Filter melee strikes based on their lifetime (within 400ms of the attack timing)
+      meleeStrikes = meleeStrikes.filter(
+        (m) => Date.now() - m.attackTiming < 400,
+      ); // Lifetime of melee strike (400ms)
+
+      for (let m of meleeStrikes) {
+        // Only calculate the end position of the strike if it's within the 400ms window
+        let strikeEndX = m.xStart + Math.cos(m.angle) * 200; // Max range for line
+        let strikeEndY = m.yStart + Math.sin(m.angle) * 200;
+
+        // Check for intersection with any wall and stop the strike at the intersection point
+        let collisionPoint = null;
+        for (let wall of walls) {
+          collisionPoint = checkMeleeStrikeIntersection(
+            m.xStart,
+            m.yStart,
+            strikeEndX,
+            strikeEndY,
+            wall,
+          );
+          if (collisionPoint) {
+            // If an intersection is detected, stop the strike at the intersection point
+            strikeEndX = collisionPoint.x;
+            strikeEndY = collisionPoint.y;
+            break; // Stop checking further walls after the first collision
+          }
         }
-        if (ball.health <= 0) {
-          balls = balls.filter((b) => b !== ball);
+
+        // Update the strike's end point with the intersection point (if any)
+        m.xEnd = strikeEndX;
+        m.yEnd = strikeEndY;
+
+        // Check for collision with balls (and handle damage as before)
+        for (let ball of balls) {
+          const distance = distanceToSegment(
+            ball.x,
+            ball.y,
+            m.xStart,
+            m.yStart,
+            m.xEnd,
+            m.yEnd,
+          );
+          const combatTimer = Date.now() - ball.lastHit > 200;
+
+          if (distance < ball.radius && combatTimer) {
+            ball.lastHit = Date.now();
+            if (checkCombatTriangle(player.damageStyle, ball.defense)) {
+              ball.health -= 10;
+              createParticles(ball.x, ball.y);
+            } else {
+              toggleDamageStyleErrorMessage();
+            }
+            if (ball.health <= 0) {
+              balls = balls.filter((b) => b !== ball);
+            }
+          }
         }
       }
     }
-  }
-}
     //establishes the 'data' & 'runtime' of the attacks.
     //detects if an attack has landed
     //its different than projectiles in that it handles its own collisions
@@ -723,23 +785,22 @@ function updateMeleeStrikes() {
     //   }
     // }
 
-
-// Function to draw the attack on screen
-// Function to draw the attack on screen
-function drawMeleeStrikes() {
-  ctx.strokeStyle = "blue"; // Color of the melee strike
-  ctx.lineWidth = 5; // Set line width for better visibility
-  for (let m of meleeStrikes) {
-    // Only draw if the strike's attack timing is within 400ms
-    if (Date.now() - m.attackTiming <= 400) {
-      ctx.beginPath();
-      ctx.moveTo(m.xStart, m.yStart);
-      ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the adjusted end point (stopping at the wall)
-      ctx.stroke();
-      ctx.closePath();
+    // Function to draw the attack on screen
+    // Function to draw the attack on screen
+    function drawMeleeStrikes() {
+      ctx.strokeStyle = "blue"; // Color of the melee strike
+      ctx.lineWidth = 5; // Set line width for better visibility
+      for (let m of meleeStrikes) {
+        // Only draw if the strike's attack timing is within 400ms
+        if (Date.now() - m.attackTiming <= 400) {
+          ctx.beginPath();
+          ctx.moveTo(m.xStart, m.yStart);
+          ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the adjusted end point (stopping at the wall)
+          ctx.stroke();
+          ctx.closePath();
+        }
+      }
     }
-  }
-}
     //=================================================================================================================
 
     // Listen for mouse movement to track the mouse position
@@ -806,6 +867,18 @@ function drawMeleeStrikes() {
         ctx.fillStyle = character.color;
       }
 
+      // Draw the border around the player (local coordinates)
+      if (player.isSlowed) {
+        ctx.strokeStyle = "red"; // Border color
+        console.log(-player.width);
+        ctx.lineWidth = 3; // Border thickness
+        ctx.strokeRect(
+          -player.width / 2,
+          -player.height / 2,
+          player.width,
+          player.height,
+        );
+      }
       // Draw the head (circle)
       ctx.beginPath();
       // ctx.arc(0, -character.height / 2, 15, 0, Math.PI * 2); // Centered around transformed origin
@@ -1139,6 +1212,7 @@ function drawMeleeStrikes() {
         if (mark.isActive && isCircleColliding(playerHitBox, mark)) {
           //slow is applied whether the player is taking damage or not
           player.currentSpeed = player.speed * 0.05; // Slow the player to 25% of base speed
+          player.isSlowed = true;
           if (!combatTimer) return; //this decides if damage will be taken
 
           //damage inflicting so reset the hit clock
@@ -1152,6 +1226,7 @@ function drawMeleeStrikes() {
           createParticles(mark.x, mark.y);
         } else {
           player.currentSpeed = player.speed;
+          player.isSlowed = false;
         }
       }
     }
@@ -1503,8 +1578,8 @@ function drawMeleeStrikes() {
     //=========================================================================================================
 
     // Wall size constants for easy adjustment
-    const WALL_WIDTH = 8;
-    const MIN_DISTANCE = 3 * WALL_WIDTH; // Minimum distance between walls (3 wall widths)
+    const WALL_WIDTH = 4;
+    const MIN_DISTANCE = 10 * WALL_WIDTH + 20; // Minimum distance between walls (3 wall widths)
 
     // Define the canvas size for boundary checking
     const canvasWidth = 1000;
@@ -1520,19 +1595,26 @@ function drawMeleeStrikes() {
 
         // Check if the new wall is too close to any existing wall (within the MIN_DISTANCE)
         if (
+          Math.abs(newWall.x + newWall.width - canvas.height / 2) <
+            MIN_DISTANCE ||
+          Math.abs(newWall.x - newWall.width - canvas.width / 2) <
+            MIN_DISTANCE ||
+          Math.abs(newWall.y + newWall.height - canvas.height / 2) <
+            MIN_DISTANCE ||
+          Math.abs(newWall.y - newWall.height - canvas.width / 2) <
+            MIN_DISTANCE ||
           Math.abs(existingWall.x - newWall.x) < MIN_DISTANCE ||
           Math.abs(existingWall.y - newWall.y) < MIN_DISTANCE ||
+          Math.abs(player.x - newWall.x) < MIN_DISTANCE ||
+          Math.abs(player.y - newWall.x) < MIN_DISTANCE ||
+          Math.abs(player.x - newWall.y) < MIN_DISTANCE ||
+          Math.abs(player.y - newWall.y) < MIN_DISTANCE ||
           Math.abs(
             existingWall.x + existingWall.width - (newWall.x + newWall.width),
           ) < MIN_DISTANCE ||
           Math.abs(
             existingWall.y + existingWall.height - (newWall.y + newWall.height),
-          ) < MIN_DISTANCE || Math.abs(
-            player.y + player.size - (newWall.y + newWall.height),
-          ) < MIN_DISTANCE * 4 ||
-          Math.abs(
-            player.x + existingWall.height - (newWall.x + newWall.width),
-          ) < MIN_DISTANCE * 4
+          ) < MIN_DISTANCE
         ) {
           return true; // The new wall is too close to an existing one
         }
@@ -1544,6 +1626,8 @@ function drawMeleeStrikes() {
     function generateWall() {
       let newWall;
       let validWall = false;
+      let MIN_HEIGHT = 150;
+      let MIN_WIDTH = 50;
 
       // Try to generate a valid wall until one is found
       while (!validWall) {
@@ -1551,9 +1635,25 @@ function drawMeleeStrikes() {
         newWall = {
           x: Math.random() * (canvasWidth - WALL_WIDTH), // Random X position
           y: Math.random() * (canvasHeight - WALL_WIDTH), // Random Y position
-          width: WALL_WIDTH + Math.random() * 600, // Random width between 20 and 70
-          height: WALL_WIDTH + Math.random() * 50, // Random height between 20 and 70
+          width: WALL_WIDTH + Math.random() * 500 + MIN_WIDTH, // Random width between 20 and 70
+          height: WALL_WIDTH + Math.random() * 500 + MIN_HEIGHT, // Random height between 20 and 70
         };
+        if (newWall.width > 150 && newWall.height > 150) {
+          let chance = Math.floor(Math.random() * 2);
+          switch (chance) {
+            case 0:
+              newWall.height = WALL_WIDTH + Math.random() * 50;
+              break;
+            case 1:
+              newWall.width = WALL_WIDTH + Math.random() * 50;
+          }
+        }
+        if (newWall.height > 450) {
+          newWall.height = newWall.height - MIN_HEIGHT;
+        }
+        if (newWall.width > 450) {
+          newWall.width = newWall.width - MIN_WIDTH;
+        }
 
         // Check if the wall respects the minimum distance rule
         validWall = !isWallTooClose(newWall);
@@ -1578,10 +1678,12 @@ function drawMeleeStrikes() {
     }
 
     // Generate a certain number of walls (e.g., 5 walls) ensuring they don't break the rules
-    for (let i = 0; i < 5; i++) {
-      generateWall();
+    function rollWalls(numberWalls) {
+      for (let i = 0; i < numberWalls; i++) {
+        generateWall();
+      }
     }
-
+    rollWalls(10);
     // Now draw the walls on the canvas
     drawWalls();
     //=========================================================================================================
@@ -1590,7 +1692,6 @@ function drawMeleeStrikes() {
       if (!isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
         countFPS(timestamp);
-        drawWalls();
         //update game objects
         updateMarks();
         updatePlayer(player);
@@ -1608,6 +1709,8 @@ function drawMeleeStrikes() {
         // drawCharacter(ctx, character); // Draw the character
         drawMarks();
         drawPlayer(ctx, player); // Draw the character
+        drawWalls();
+
         // drawPlayer();
         drawBalls();
         drawHealth();
