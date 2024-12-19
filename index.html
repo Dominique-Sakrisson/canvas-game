@@ -1350,8 +1350,14 @@
     }
     // Draw health
     function drawHealth() {
-      ctx.fillStyle = "black";
-      ctx.font = "20px Arial";
+      ctx.fillStyle = "white";
+      if(player.health < 30){
+
+        ctx.fillStyle = "red";
+      }
+      ctx.fillRect(0, 0, canvas.width, 0); // Adjust the height as needed
+
+      ctx.font = "40px Arial";
       ctx.fillText(
         `Health: ${formatHealthValue()} \n Lives: ${player.lives} FPS: ${currentFPS}`,
         10,
@@ -1663,6 +1669,150 @@
       walls.push(newWall);
     }
 
+    // Store the x-offsets for scrolling
+    let terrainOffsetX = 0;
+    let cloudOffsetX = 0;
+    // Store the x-offset for scrolling
+    let offsetX = 0;
+
+    // Generate persistent objects
+    const rocks = Array.from({ length: 10 }, () => ({
+      x: Math.random() * canvas.width * 2,
+      y: canvas.height - 100 + Math.random() * 20,
+      radius: Math.random() * 10 + 5,
+    }));
+
+    const flowers = Array.from({ length: 5 }, () => ({
+      x: Math.random() * canvas.width * 2,
+      y: canvas.height - 110 + Math.random() * 10,
+    }));
+
+    const clouds = Array.from({ length: 6 }, () => ({
+      x: Math.random() * canvas.width * 2,
+      y: Math.random() * 100, // Clouds appear in the top 100px
+      width: Math.random() * 100 + 50, // Random width
+      height: Math.random() * 30 + 20, // Random height
+      opacity: Math.random() * 0.5 + 0.5, // Semi-transparent
+    }));
+
+    function drawTerrain() {
+      // Draw the sky
+      ctx.fillStyle = "#87CEEB"; // Light blue for sky
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw clouds
+      clouds.forEach((cloud) => {
+        let cloudX =
+          (cloud.x - offsetX + canvas.width * 2) % (canvas.width * 2);
+        ctx.globalAlpha = cloud.opacity; // Set opacity
+        ctx.fillStyle = "#FFFFFF"; // White for clouds
+        ctx.beginPath();
+        ctx.ellipse(
+          cloudX,
+          cloud.y,
+          cloud.width / 2,
+          cloud.height / 2,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1; // Reset opacity
+      });
+
+      // Draw the ground
+      ctx.fillStyle = "#6B8E23"; // Olive green for grass
+      ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+      // Add details to the ground
+      ctx.fillStyle = "#8B4513"; // Brown for dirt layer
+      ctx.fillRect(0, canvas.height - 120, canvas.width, 20);
+
+      // Add grass blades
+      for (let i = 0; i < canvas.width; i += 10) {
+        ctx.beginPath();
+        ctx.moveTo(i, canvas.height - 100);
+        ctx.lineTo(i + 5, canvas.height - 110);
+        ctx.lineTo(i + 10, canvas.height - 100);
+        ctx.closePath();
+        ctx.fillStyle = "#228B22"; // Forest green for grass blades
+        ctx.fill();
+      }
+
+      // Define movement speeds
+      const terrainSpeed = 2; // Speed for terrain
+      const cloudSpeed = 0.5; // Slower speed for clouds
+
+      // Draw clouds
+      clouds.forEach((cloud) => {
+        const cloudX =
+          (cloud.x - offsetX + canvas.width * 2) % (canvas.width * 2);
+        ctx.globalAlpha = cloud.opacity; // Set opacity
+        ctx.fillStyle = "#FFFFFF"; // White for clouds
+        ctx.beginPath();
+        ctx.ellipse(
+          cloudX,
+          cloud.y,
+          cloud.width / 2,
+          cloud.height / 2,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1; // Reset opacity
+      });
+      // Draw rocks
+      rocks.forEach((rock) => {
+        const rockX =
+          (rock.x - offsetX + canvas.width * 2) % (canvas.width * 2);
+        ctx.beginPath();
+        ctx.arc(rockX, rock.y, rock.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#808080"; // Gray for rocks
+        ctx.fill();
+      });
+
+      // Draw flowers
+      flowers.forEach((flower) => {
+        const flowerX =
+          (flower.x - offsetX + canvas.width * 2) % (canvas.width * 2);
+        ctx.fillStyle = "#FF69B4"; // Pink for flower petals
+        ctx.beginPath();
+        ctx.arc(flowerX, flower.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FFD700"; // Yellow for flower center
+        ctx.beginPath();
+        ctx.arc(flowerX, flower.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      //these two functions will cause these things to look likt heyre scrolling by
+      // // Add rocks
+      // for (let i = 0; i < 10; i++) {
+      //     const rockX = Math.random() * canvas.width;
+      //     const rockY = canvas.height - 100 + Math.random() * 20;
+      //     const rockRadius = Math.random() * 10 + 5;
+      //     ctx.beginPath();
+      //     ctx.arc(rockX, rockY, rockRadius, 0, Math.PI * 2);
+      //     ctx.fillStyle = "#808080"; // Gray for rocks
+      //     ctx.fill();
+      // }
+
+      // // Add flowers
+      // for (let i = 0; i < 5; i++) {
+      //     const flowerX = Math.random() * canvas.width;
+      //     const flowerY = canvas.height - 110 + Math.random() * 10;
+      //     ctx.fillStyle = "#FF69B4"; // Pink for flower petals
+      //     ctx.beginPath();
+      //     ctx.arc(flowerX, flowerY, 3, 0, Math.PI * 2);
+      //     ctx.fill();
+      //     ctx.fillStyle = "#FFD700"; // Yellow for flower center
+      //     ctx.beginPath();
+      //     ctx.arc(flowerX, flowerY, 1.5, 0, Math.PI * 2);
+      //     ctx.fill();
+      // }
+    }
+
     // Function to draw all walls
     function drawWalls() {
       ctx.fillStyle = "gray"; // Wall color
@@ -1691,6 +1841,9 @@
     function loop(timestamp) {
       if (!isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+        clouds.forEach((cloud) => {
+          cloud.x++;
+        });
         countFPS(timestamp);
         //update game objects
         updateMarks();
@@ -1707,10 +1860,10 @@
         //draw game objects
 
         // drawCharacter(ctx, character); // Draw the character
+        drawTerrain();
         drawMarks();
         drawPlayer(ctx, player); // Draw the character
         drawWalls();
-
         // drawPlayer();
         drawBalls();
         drawHealth();
