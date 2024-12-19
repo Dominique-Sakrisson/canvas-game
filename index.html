@@ -27,112 +27,139 @@
 
     let marks = []; // Array to store marks
     // Ball objects
-    let balls = [
-      // {
-      //   x: 200,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: 2,
-      //   vy: 1,
-      //   color: "blue",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-      // {
-      //   x: 400,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: -3,
-      //   vy: 5,
-      //   color: "green",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-      // {
-      //   x: 300,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: 5,
-      //   vy: -2,
-      //   color: "red",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-    ];
+    let balls = [];
     // Particle system
     let particles = [];
     // Mark constructor
     function createMark() {
       const mark = {
-        x: Math.random() * (canvas.width - 500), // Adjusted for mark's radius
-        y: Math.random() * (canvas.height - 500), // Adjusted for mark's radius
-        opacity: 0, // Start with opacity 0 (washed out)
+        x: Math.random() * (canvas.width - 150), // Adjusted for mark's radius
+        y: Math.random() * (canvas.height - 150), // Adjusted for mark's radius
+        opacity: 1, // Start with opacity 0 (washed out)
         createdAt: Date.now(), // Timestamp for when the mark was created
         lifespan: 6500, // Mark will last for 2.5 seconds
-        radius: 300,
+        radius: getRandomInt(25, 300),
         damageStyle: "mark",
         damage: 1,
+        // baseColor: getRandomColor(), // Store base color
         isActive: false, // Mark is not interactable until fully faded in
       };
+      mark.damage = mark.radius * 0.01;
 
+      // Initially set the color to the base color with 0 opacity
+      // mark.color = `rgba(${mark.baseColor.r}, ${mark.baseColor.g}, ${mark.baseColor.b}, ${mark.opacity})`;
       marks.push(mark);
     }
 
-    // Update all marks, fade in and check for collision with player
+    // // Update all marks, fade in and check for collision with player
     function updateMarks() {
       const currentTime = Date.now();
 
       marks = marks.filter((mark) => {
         const age = currentTime - mark.createdAt;
 
-        // Update opacity (fade in for first 0.5 seconds)
-        if (age < 5000) {
-          mark.opacity = age / 5500; // Gradually increase opacity over 0.5 seconds
-        } else if (age < 5500) {
-          // mark.opacity = 1; // Full opacity after 0.5 seconds
-          mark.color = "red";
-          mark.isActive = true; // Mark is now interactable
+        // Gradually fade in the gradient over the entire lifespan
+        const gradientOpacity = Math.min(age / mark.lifespan, 1); // Fade in from 0 to 1 over the lifespan
+
+        // Create a radial gradient with increasing opacity
+        const gradient = ctx.createRadialGradient(
+          mark.x,
+          mark.y,
+          0, // Start at the center of the mark
+          mark.x,
+          mark.y,
+          mark.radius, // End at the outer edge of the mark
+        );
+
+        // Apply the gradient opacity
+        gradient.addColorStop(0, `rgba(255, 0, 0, ${gradientOpacity})`); // Red at the center
+        gradient.addColorStop(
+          0.5,
+          `rgba(255, 165, 0, ${gradientOpacity * 0.7})`,
+        ); // Orange in the middle
+        gradient.addColorStop(1, `rgba(0, 0, 255, ${gradientOpacity * 0.4})`); // Blue at the outer edge
+
+        mark.color = gradient;
+
+        // Once the gradient reaches 80%, start the flashing effect for the borders
+        if (gradientOpacity >= 0.65 && !mark.hasFlashed) {
+          mark.isActive = true;
+          mark.hasFlashed = true;
+          mark.flashCount = 5; // Set the number of flashes to 5
+          mark.flashInterval = setInterval(() => {
+            if (mark.flashCount > 0) {
+              // Toggle the border color to simulate the flash effect
+              mark.borderColor =
+                mark.borderColor === "white" ? "transparent" : "white";
+              mark.flashCount--;
+            } else {
+              clearInterval(mark.flashInterval); // Stop flashing after 5 flashes
+              mark.borderColor = "transparent"; // Reset the border color after flashing
+            }
+          }, 200); // Flash every 200ms
         }
-        if (age >= 6500) {
+
+        // Draw the mark with the current gradient and border color
+        ctx.save(); // Save the current context to prevent affecting other objects
+
+        // Draw the filled mark
+        ctx.beginPath();
+        ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2);
+        ctx.fillStyle = mark.color;
+        ctx.fill();
+
+        // Apply border only if it's flashing
+        if (mark.borderColor) {
+          ctx.lineWidth = 20; // Apply thicker border when flashing
+          ctx.strokeStyle = mark.borderColor; // Apply the flashing border color
+          ctx.stroke(); // Apply the stroke
+        } else {
+          ctx.lineWidth = 0; // Avoid any border if not flashing
+        }
+
+        ctx.restore(); // Restore the context to avoid affecting other drawings
+
+        // Mark is now interactable after it has fully faded in
+        if (gradientOpacity === 1) {
+          mark.isActive = true;
+        }
+
+        // Remove the mark after it exceeds its lifespan
+        if (age >= mark.lifespan) {
           marks = marks.filter((m) => m !== mark); // Remove the mark after collision
           return false;
         }
 
-        // Check collision with player (same logic as handlePlayerCollisions)
-        // if (
-        //   mark.isActive &&
-        //   isCircleColliding(
-        //     { x: player.x, y: player.y, radius: player.size / 2 },
-        //     mark,
-        //   )
-        // ) {
-        //   // player.health -= 5; // Damage player by 5w
-        //   // handlePlayerDamage();
-        // }
-
         return true;
       });
     }
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    let randomInt = getRandomInt(1, 10);
     function drawMarks() {
       for (let mark of marks) {
-        let markRadius = 100;
+        let markRadius = getRandomInt(25, 100);
         ctx.beginPath();
         // ctx.arc(mark.x, mark.y, markRadius, 0, Math.PI * 2); // Draw a circle with radius 10
         ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2); // Draw a circle with radius 10
 
         // ctx.fillStyle = `rgba(0, 0, 0, ${mark.opacity})`; // Black color with opacity
+        ctx.fillStyle = mark.color;
 
         // Set color based on mark's age
-        if (mark.color === "red") {
-          ctx.fillStyle = `rgba(255, 0, 0, ${mark.opacity})`; // Red color
-        } else {
-          ctx.fillStyle = `rgba(0, 0, 0, ${mark.opacity})`; // Default color (black)
-        }
+        // if (typeof mark.color === "object") {
+        //   // ctx.fillStyle = `rgba(255, 0, 0, ${mark.opacity})`; // Red color
+        //   ctx.fillStyle = mark.color;
+        // } else {
+        //   ctx.fillStyle = `rgba(0, 0, 0, ${mark.opacity})`; // Default color (black)
+        // }
         ctx.fill();
       }
     }
 
-    setInterval(createMark, 3000); // Spawn a mark every 3 seconds
+    setInterval(createMark, 1500); // Spawn a mark every 3 seconds
 
     let canControl = true; // Flag to allow/disallow controls
     let timeoutId; // To store the setTimeout reference for clearing the timeout if needed
@@ -164,6 +191,8 @@
       height: 100,
       size: 40,
       speed: 4,
+      currentSpeed: 4,
+      isSlowed: false,
       angle: 0, // Forward direction (in radians)
       color: "blue",
       health: 100,
@@ -189,44 +218,34 @@
     // Handle player controls
     function updatePlayer(player) {
       if (!canControl || isGameOver) return; // Skip if the game is over or controls are disabled
-
-      // // Calculate the angle between the player and the mouse
-      // player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-
       // Calculate the angle between the player and the mouse
       const angleToMouse = Math.atan2(mouseY - player.y, mouseX - player.x);
       player.angle = angleToMouse;
 
-      // // Determine whether the player is facing forward or backward
-      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
-      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
-
       // Check if the mouse is above the player (on the Y-axis)
       player.isFacingBack = mouseY < player.y;
 
-      // // Determine if the player should face back based on tightened bounds
-      // const FRONT_ANGLE_THRESHOLD = Math.PI / 2; // ±45 degrees (front-facing range)
-      // player.isFacingBack =
-      //   player.angle > FRONT_ANGLE_THRESHOLD ||
-      //   player.angle < -FRONT_ANGLE_THRESHOLD;
+      // Store the previous position of the player
+      const prevX = player.x;
+      const prevY = player.y;
 
       // Move player based on keyboard input
       //move up on the canvas
       if (keys["w"]) {
-        player.y -= player.speed;
+        player.y -= player.currentSpeed;
       }
       //move down on the canvas
       if (keys["s"]) {
-        player.y += player.speed;
+        player.y += player.currentSpeed;
       }
       if (keys["a"]) {
         // Move left on the canvas
-        player.x -= player.speed;
+        player.x -= player.currentSpeed;
       }
 
       if (keys["d"]) {
         // Move right on the canvas
-        player.x += player.speed;
+        player.x += player.currentSpeed;
       }
 
       // Boundaries check
@@ -238,6 +257,24 @@
         player.size / 2,
         Math.min(canvas.height - player.size / 2, player.y),
       );
+
+      // Handle collisions with walls
+      for (let i = 0; i < walls.length; i++) {
+        const wall = walls[i];
+
+        // Check for collision with the wall
+        if (
+          player.x + player.size / 2 > wall.x &&
+          player.x - player.size / 2 < wall.x + wall.width &&
+          player.y + player.size / 2 > wall.y &&
+          player.y - player.size / 2 < wall.y + wall.height
+        ) {
+          // If there was a collision, revert the position to where it was before the move
+          player.x = prevX;
+          player.y = prevY;
+          break; // Stop checking other walls once we have resolved this collision
+        }
+      }
 
       // Response to player pressing space bar
       if (keys[" "]) {
@@ -265,7 +302,6 @@
 
     function handlePlayerDamage(damageRoll) {
       if (isPlayerDead) return; // Stop further execution if the player is already dead
-      console.log(damageRoll);
       //check the damage triangle
       const combatCheck = checkCombatTriangle(
         damageRoll.damageStyle,
@@ -280,31 +316,17 @@
         player.lives--;
         createBloodSplatterEffect(player.x, player.y);
 
+        // If player has no lives left, freeze the game and show the respawn button
         if (player.lives <= 0) {
-          // If player has no lives left, freeze the game and show the respawn button
           isGameOver = true;
         }
-        // else {
-        //   // Disable controls for 2 seconds after player death
-        //   canControl = false;
-        //   timeoutId = setTimeout(() => {
-        //     canControl = true; // Re-enable controls after timeout
-        //   }, 2000); // 2000ms = 2 seconds
-        // }
         showRespawnButton(); // Show the respawn button
 
-        // showRespawnButton(); // Show the respawn button
-        // respawnPlayer(); // Reset player to the center of the canvas
         // Bring focus back to the canvas
         const canvas = document.querySelector("canvas");
         if (canvas) {
           canvas.focus();
         }
-
-        // // Re-enable controls after 2 seconds
-        // timeoutId = setTimeout(() => {
-        //   canControl = true; // Re-enable controls after timeout
-        // }, 2000); // 2000ms = 2 seconds
       }
     }
 
@@ -333,6 +355,7 @@
         angle,
         size,
         speed,
+        bounced: 0,
       });
     }
 
@@ -403,24 +426,6 @@
       console.log(`Current Weapon: ${player.damageStyle}`); // Log the current weapon for debugging
     }
 
-    //1. This stuff here only works for projectileStrike because its the only attack method properly implemented
-    // Function to handle attack based on the active weapon
-    // function handleAttack(event) {
-    //   if (player.damageStyle === "projectile") {
-    //     if (event.code === "Space") {
-    //       projectileStrike(); // Fire projectile attack
-    //     }
-    //   } else if (player.damageStyle === "melee") {
-    //     if (event.code === "Space") {
-    //       meleeStrike(); // Perform melee strike when Space is pressed
-    //     }
-    //   } else if (player.damageStyle === "magic") {
-    //     if (event.type === "click") {
-    //       magicStrike(event); // Perform magic strike on click
-    //     }
-    //   }
-    // }
-
     // Add event listener for "X" key to cycle weapons
     document.addEventListener("keydown", (event) => {
       if (event.code === "KeyX") {
@@ -438,7 +443,7 @@
     //   handleAttack(event); // Perform magic strike when canvas is clicked
     // });
 
-    // Update projectiles
+    // // Update projectiles
     function updateProjectiles() {
       projectiles = projectiles.filter(
         (p) => p.x > 0 && p.x < canvas.width && p.y > 0 && p.y < canvas.height, // Remove off-screen projectiles
@@ -447,9 +452,48 @@
       for (let p of projectiles) {
         p.x += Math.cos(p.angle) * p.speed;
         p.y += Math.sin(p.angle) * p.speed;
+
+        // Check for collision with walls
+        const wallHit = checkProjectileCollision(p);
+        if (wallHit) {
+          if (p.bounced < 1) {
+            // Handle bounce if it's the first collision
+            handleProjectileBounce(p, wallHit);
+          } else {
+            // Remove the projectile after bouncing once
+            projectiles = projectiles.filter((projectile) => projectile !== p);
+          }
+        }
       }
     }
+    //===============================================================================
+    // Function to check if a projectile has collided with a wall (AABB collision detection)
+    function checkProjectileCollision(p) {
+      for (let wall of walls) {
+        if (
+          p.x + p.size > wall.x &&
+          p.x - p.size < wall.x + wall.width &&
+          p.y + p.size > wall.y &&
+          p.y - p.size < wall.y + wall.height
+        ) {
+          return wall; // Return the wall if a collision is detected
+        }
+      }
+      return null; // No collision
+    }
 
+    // Function to handle the bouncing of the projectile
+    function handleProjectileBounce(p, wall) {
+      // Simple bounce logic based on the projectile's angle
+      const angleToWall = Math.atan2(
+        p.y - (wall.y + wall.height / 2),
+        p.x - (wall.x + wall.width / 2),
+      );
+      p.angle = angleToWall + Math.PI; // Reverse the direction of the projectile (bounce)
+      p.bounced += 1;
+    }
+
+    //===============================================================================
     // Draw projectiles
     function drawProjectiles() {
       for (let p of projectiles) {
@@ -461,71 +505,194 @@
       }
     }
 
-    // Update melee strikesx
-    // function updateMeleeStrikes() {
-    //   meleeStrikes = meleeStrikes.filter((m) => {
-    //     // Remove melee strikes that have traveled beyond their maximum range
-    //     const distanceTravelled = Math.sqrt(
-    //       Math.pow(m.xEnd - m.xStart, 2) + Math.pow(m.yEnd - m.yStart, 2),
-    //     );
-    //     return distanceTravelled < 400; // 100 is the max range for the melee strike (can be adjusted)
-    //   });
-
-    //   for (let m of meleeStrikes) {
-    //     // Move the melee strike forward (in this case, this is a simple linear direction)
-    //     const range = 400; // Define the max range for the melee strike
-    //     const deltaX = Math.cos(m.angle) * m.speed;
-    //     const deltaY = Math.sin(m.angle) * m.speed;
-
-    //     m.xStart += deltaX;
-    //     m.yStart += deltaY;
-    //     m.xEnd = m.xStart + Math.cos(m.angle) * range;
-    //     m.yEnd = m.yStart + Math.sin(m.angle) * range;
-    //   }
-    // }
-
+    //handling melee attacks
     //=================================================================================================================
 
-    //===========================================================================================
-    function updateMeleeStrikes() {
-      meleeStrikes = meleeStrikes.filter((m) => {
-        // Remove melee strikes after some time/distance
-        return Date.now() - m.attackTiming < 400; // Lifetime of melee strike (400ms)
-      });
-
-      for (let m of meleeStrikes) {
-        m.xEnd = m.xStart + Math.cos(m.angle) * 200; // Max range for line
-        m.yEnd = m.yStart + Math.sin(m.angle) * 200;
-
-        // Check collision with balls
-        for (let ball of balls) {
-          const distance = distanceToSegment(
-            ball.x,
-            ball.y,
-            m.xStart,
-            m.yStart,
-            m.xEnd,
-            m.yEnd,
-          );
-
-          const combatTimer = Date.now() - ball.lastHit > 500; //verifies that damage is dealt in 800ms blocks
-          // If distance is less than the ball's radius, deal damage
-          if (distance < ball.radius && combatTimer) {
-            ball.lastHit = Date.now();
-
-            // Handle damage to ball or other game logic
-
-            createParticles(ball.x, ball.y); // Create particles at collision point
-            ball.health -= 1; // Example: reduce ball's health
-
-            if (ball.health <= 0) {
-              balls = balls.filter((b) => b !== ball); // Remove ball if health <= 0
-            }
+    // Function to check if a line (melee strike) intersects with any walls
+    function checkStrikeWallCollision(m) {
+      for (let wall of walls) {
+        if (
+          m.xStart < wall.x + wall.width &&
+          m.xEnd > wall.x && // Check horizontal bounds
+          m.yStart < wall.y + wall.height &&
+          m.yEnd > wall.y // Check vertical bounds
+        ) {
+          // Use line intersection logic here, we will return true if it intersects
+          if (lineIntersectsRect(m.xStart, m.yStart, m.xEnd, m.yEnd, wall)) {
+            return true; // The melee strike intersects with the wall
           }
         }
       }
+      return false; // No intersection with any walls
     }
 
+    // Function to check if a line intersects a rectangle (wall)
+function lineIntersectsRect(x1, y1, x2, y2, rect) {
+  // Check if the line intersects any of the four sides of the rectangle
+  const left = rect.x, right = rect.x + rect.width, top = rect.y, bottom = rect.y + rect.height;
+
+  // Check each side of the rectangle (left, right, top, bottom)
+  return (
+    lineIntersectsLine(x1, y1, x2, y2, left, top, left, bottom) || // Left
+    lineIntersectsLine(x1, y1, x2, y2, right, top, right, bottom) || // Right
+    lineIntersectsLine(x1, y1, x2, y2, left, top, right, top) || // Top
+    lineIntersectsLine(x1, y1, x2, y2, left, bottom, right, bottom) // Bottom
+  );
+}
+
+// Function to check if two lines intersect and return the point of intersection
+function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (denom === 0) return null; // Parallel lines, no intersection
+
+  const intersectX = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom;
+  const intersectY = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom;
+
+  // Check if the intersection point is within the bounds of both line segments
+  if (
+    Math.min(x1, x2) <= intersectX && intersectX <= Math.max(x1, x2) &&
+    Math.min(y1, y2) <= intersectY && intersectY <= Math.max(y1, y2) &&
+    Math.min(x3, x4) <= intersectX && intersectX <= Math.max(x3, x4) &&
+    Math.min(y3, y4) <= intersectY && intersectY <= Math.max(y3, y4)
+  ) {
+    return { x: intersectX, y: intersectY };
+  }
+  return null; // No intersection within the segment bounds
+}
+
+// Function to check if the melee strike intersects with a wall and return the intersection point
+function checkMeleeStrikeIntersection(xStart, yStart, xEnd, yEnd, wall) {
+  const wallLeft = wall.x;
+  const wallRight = wall.x + wall.width;
+  const wallTop = wall.y;
+  const wallBottom = wall.y + wall.height;
+
+  // Check each wall edge (left, right, top, bottom) for intersection with the strike
+  let intersection = null;
+  
+  // Left edge
+  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallTop, wallLeft, wallBottom);
+  if (intersection) return intersection;
+  
+  // Right edge
+  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallRight, wallTop, wallRight, wallBottom);
+  if (intersection) return intersection;
+  
+  // Top edge
+  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallTop, wallRight, wallTop);
+  if (intersection) return intersection;
+  
+  // Bottom edge
+  intersection = lineIntersectsLine(xStart, yStart, xEnd, yEnd, wallLeft, wallBottom, wallRight, wallBottom);
+  if (intersection) return intersection;
+  
+  return null; // No intersection
+}
+
+// Function to update melee strikes and handle wall collisions
+// Function to update melee strikes and handle wall collisions
+function updateMeleeStrikes() {
+  // Filter melee strikes based on their lifetime (within 400ms of the attack timing)
+  meleeStrikes = meleeStrikes.filter((m) => Date.now() - m.attackTiming < 400); // Lifetime of melee strike (400ms)
+
+  for (let m of meleeStrikes) {
+    // Only calculate the end position of the strike if it's within the 400ms window
+    let strikeEndX = m.xStart + Math.cos(m.angle) * 200; // Max range for line
+    let strikeEndY = m.yStart + Math.sin(m.angle) * 200;
+
+    // Check for intersection with any wall and stop the strike at the intersection point
+    let collisionPoint = null;
+    for (let wall of walls) {
+      collisionPoint = checkMeleeStrikeIntersection(m.xStart, m.yStart, strikeEndX, strikeEndY, wall);
+      if (collisionPoint) {
+        // If an intersection is detected, stop the strike at the intersection point
+        strikeEndX = collisionPoint.x;
+        strikeEndY = collisionPoint.y;
+        break; // Stop checking further walls after the first collision
+      }
+    }
+
+    // Update the strike's end point with the intersection point (if any)
+    m.xEnd = strikeEndX;
+    m.yEnd = strikeEndY;
+
+    // Check for collision with balls (and handle damage as before)
+    for (let ball of balls) {
+      const distance = distanceToSegment(ball.x, ball.y, m.xStart, m.yStart, m.xEnd, m.yEnd);
+      const combatTimer = Date.now() - ball.lastHit > 200;
+
+      if (distance < ball.radius && combatTimer) {
+        ball.lastHit = Date.now();
+        if (checkCombatTriangle(player.damageStyle, ball.defense)) {
+          ball.health -= 10;
+          createParticles(ball.x, ball.y);
+        } else {
+          toggleDamageStyleErrorMessage();
+        }
+        if (ball.health <= 0) {
+          balls = balls.filter((b) => b !== ball);
+        }
+      }
+    }
+  }
+}
+    //establishes the 'data' & 'runtime' of the attacks.
+    //detects if an attack has landed
+    //its different than projectiles in that it handles its own collisions
+    // function updateMeleeStrikes() {
+    //   meleeStrikes = meleeStrikes.filter((m) => {
+    //     // Remove melee strikes after some time/distance
+    //     return Date.now() - m.attackTiming < 400; // Lifetime of melee strike (400ms)
+    //   });
+
+    //   for (let m of meleeStrikes) {
+    //     m.xEnd = m.xStart + Math.cos(m.angle) * 200; // Max range for line
+    //     m.yEnd = m.yStart + Math.sin(m.angle) * 200;
+
+    //     // Check if the melee strike hits a wall first
+    //     if (checkStrikeWallCollision(m)) {
+    //       continue; // Skip this melee strike if it hits a wall
+    //     }
+
+    //     // Check collision with balls
+    //     for (let ball of balls) {
+    //       const distance = distanceToSegment(
+    //         ball.x,
+    //         ball.y,
+    //         m.xStart,
+    //         m.yStart,
+    //         m.xEnd,
+    //         m.yEnd,
+    //       );
+
+    //       const combatTimer = Date.now() - ball.lastHit > 200; //verifies that damage is dealt in 500ms blocks
+    //       // If distance is less than the ball's radius, deal damage
+    //       if (distance < ball.radius && combatTimer) {
+    //         ball.lastHit = Date.now();
+
+    //         if (checkCombatTriangle(player.damageStyle, ball.defense)) {
+    //           console.log(
+    //             `The attack style was ${player.damageStyle} and the defence style was ${ball.defense}`,
+    //           );
+    //           ball.health -= 10; // Reduce ball health by 2 on projectile hit
+    //           createParticles(ball.x, ball.y); // Create particles at collision point
+    //         } else {
+    //           toggleDamageStyleErrorMessage();
+    //         }
+    //         // Handle damage to ball or other game logic
+
+    //         createParticles(ball.x, ball.y); // Create particles at collision point
+    //         // ball.health -= 1; // Example: reduce ball's health
+
+    //         if (ball.health <= 0) {
+    //           balls = balls.filter((b) => b !== ball); // Remove ball if health <= 0
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+
+    //supporting function to calculate the melee attacks
     function distanceToSegment(px, py, x1, y1, x2, y2) {
       const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2; // Square of the segment length
 
@@ -543,19 +710,36 @@
       return Math.hypot(px - closestX, py - closestY);
     }
 
-    // Draw melee strikes
-    function drawMeleeStrikes() {
-      ctx.strokeStyle = "blue"; // Color of the melee strike
-      ctx.lineWidth = 5; // Set line width for better visibility
-      for (let m of meleeStrikes) {
-        ctx.beginPath();
-        ctx.moveTo(m.xStart, m.yStart);
-        ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the end point of the melee strike
-        ctx.stroke();
-        ctx.closePath();
-      }
-    }
+    // Actually shows the attack animation on the screen
+    // function drawMeleeStrikes() {
+    //   ctx.strokeStyle = "blue"; // Color of the melee strike
+    //   ctx.lineWidth = 5; // Set line width for better visibility
+    //   for (let m of meleeStrikes) {
+    //     ctx.beginPath();
+    //     ctx.moveTo(m.xStart, m.yStart);
+    //     ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the end point of the melee strike
+    //     ctx.stroke();
+    //     ctx.closePath();
+    //   }
+    // }
 
+
+// Function to draw the attack on screen
+// Function to draw the attack on screen
+function drawMeleeStrikes() {
+  ctx.strokeStyle = "blue"; // Color of the melee strike
+  ctx.lineWidth = 5; // Set line width for better visibility
+  for (let m of meleeStrikes) {
+    // Only draw if the strike's attack timing is within 400ms
+    if (Date.now() - m.attackTiming <= 400) {
+      ctx.beginPath();
+      ctx.moveTo(m.xStart, m.yStart);
+      ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the adjusted end point (stopping at the wall)
+      ctx.stroke();
+      ctx.closePath();
+    }
+  }
+}
     //=================================================================================================================
 
     // Listen for mouse movement to track the mouse position
@@ -598,30 +782,16 @@
         // ctx.rotate(2 *character.angle);
         ctx.scale(1, -1); // Flip horizontally
       }
-      if (character.angle > -3.14 && character.angle < -1.97) {
-        // ctx.scale(1, -1); // Flip horizontally
-        // ctx.rotate(-character.angle);
-      }
+      // if (character.angle > -3.14 && character.angle < -1.97) {
+
+      // }
       if (character.angle >= -1.7 && character.angle < -0.01) {
         ctx.scale(1, -1); // Flip horizontally
-        // ctx.rotate(-character.angle);
       }
-      // else {
-      //   ctx.rotate(character.angle);
-      //   // ctx.scale(1, -1); // Flip horizontally
-      // }
-
-      // Apply horizontal flip for back-facing orientation
-      // if (character.isFacingBack) {
-      //   ctx.scale(1, -1); // Flip horizontally
-      // }sadss
-
-      // Set color based on mouse position
 
       // // Flip horizontally when showing the back
       if (player.isFacingBack) {
         ctx.scale(1, -1); // Mirror vertically to represent the back
-        // } else {
       }
 
       // ctx.rotate(character.angle);
@@ -731,36 +901,6 @@
 
       ctx.restore();
     }
-
-    // Draw player
-    // function drawPlayer() {
-    //   ctx.save();
-    //   ctx.translate(player.x, player.y);
-    //   ctx.rotate(player.angle);
-
-    //   if (Date.now() - player.lastHitTime < 1500) {
-    //     ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
-    //   } else {
-    //     ctx.fillStyle = player.color;
-    //   }
-    //   // Draw the square
-    //   // ctx.fillStyle = player.color;
-    //   ctx.fillRect(
-    //     -player.size / 2,
-    //     -player.size / 2,
-    //     player.size,
-    //     player.size,
-    //   );
-
-    //   // Draw forward marker
-    //   ctx.beginPath();
-    //   ctx.moveTo(0, -player.size / 2); // Forward point
-    //   ctx.lineTo(0, player.size / 2); // Back line
-    //   ctx.strokeStyle = "white";
-    //   ctx.lineWidth = 2;
-    //   ctx.stroke();
-    //   ctx.restore();
-    // }
 
     function getRandomNumber(min, max) {
       return Math.random() * (max - min) + min;
@@ -950,25 +1090,19 @@
 
       for (let ball of balls) {
         let now = Date.now();
+        // Check for cooldown
+        //@TODO:
+        //this raw 200 should be converted to a property on the balls ,same way it should be for marks
         const combatTimer = now - player.lastHit > 200; //verifies that damage is dealt in 800ms blocks
-
-        console.log(combatTimer);
+        const playerHitBox = { x: player.x, y: player.y, radius: playerRadius };
         //convert the radius that was calculated in order to calculate collision of radius's
-        if (
-          isCircleColliding(
-            { x: player.x, y: player.y, radius: playerRadius },
-            ball,
-          )
-        ) {
-          // Check for cooldown
+        if (isCircleColliding(playerHitBox, ball)) {
           if (!combatTimer) return;
           now = Date.now();
           player.lastHit = now;
-          // if (!ball.lastHit || currentTime - ball.lastHit > 1500) {
           const damageRoll = {
             damage: ball.damage,
             damageStyle: ball.damageStyle,
-            // };
           };
           handlePlayerDamage(damageRoll);
           createParticles(ball.x, ball.y); // Create particles at collision point
@@ -1001,14 +1135,13 @@
         // const combatTimer = Date.now() - player.lastHit > 800; //verifies that damage is dealt in 800ms blocks
         let now = Date.now();
         const combatTimer = now - player.lastMarkHit > 50;
-        if (
-          mark.isActive &&
-          isCircleColliding(
-            { x: player.x, y: player.y, radius: playerRadius },
-            mark,
-          )
-        ) {
-          if(!combatTimer) return;
+        const playerHitBox = { x: player.x, y: player.y, radius: playerRadius };
+        if (mark.isActive && isCircleColliding(playerHitBox, mark)) {
+          //slow is applied whether the player is taking damage or not
+          player.currentSpeed = player.speed * 0.05; // Slow the player to 25% of base speed
+          if (!combatTimer) return; //this decides if damage will be taken
+
+          //damage inflicting so reset the hit clock
           now = Date.now();
           player.lastMarkHit = now;
           const damageRoll = {
@@ -1017,6 +1150,8 @@
           };
           handlePlayerDamage(damageRoll);
           createParticles(mark.x, mark.y);
+        } else {
+          player.currentSpeed = player.speed;
         }
       }
     }
@@ -1046,13 +1181,42 @@
         ball.x += ball.vx;
         ball.y += ball.vy;
 
-        // Bounce off walls
+        // Bounce off perimeter
         if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
           ball.vx *= -1;
         }
         if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
           ball.vy *= -1;
         }
+
+        // Handle collision with each wall
+        walls.forEach((wall) => {
+          // Check for collision with the rectangular wall
+          if (
+            ball.x + ball.radius > wall.x &&
+            ball.x - ball.radius < wall.x + wall.width &&
+            ball.y + ball.radius > wall.y &&
+            ball.y - ball.radius < wall.y + wall.height
+          ) {
+            // Bounce off the top or bottom of the wall
+            if (ball.x > wall.x && ball.x < wall.x + wall.width) {
+              if (ball.y - ball.radius < wall.y) {
+                ball.vy *= -1; // Bounce off the top wall
+              } else if (ball.y + ball.radius > wall.y + wall.height) {
+                ball.vy *= -1; // Bounce off the bottom wall
+              }
+            }
+
+            // Bounce off the left or right of the wall
+            if (ball.y > wall.y && ball.y < wall.y + wall.height) {
+              if (ball.x - ball.radius < wall.x) {
+                ball.vx *= -1; // Bounce off the left wall
+              } else if (ball.x + ball.radius > wall.x + wall.width) {
+                ball.vx *= -1; // Bounce off the right wall
+              }
+            }
+          }
+        });
 
         // Check for collisions with other balls
         for (let j = i + 1; j < balls.length; j++) {
@@ -1071,6 +1235,7 @@
             );
           }
         }
+        //@TODO: check for collisions with projectiles, weapon attacks,
       }
     }
 
@@ -1102,12 +1267,18 @@
       }
     }
 
+    function formatHealthValue() {
+      if (player.health < 0) {
+        return 0;
+      }
+      return Math.ceil(player.health);
+    }
     // Draw health
     function drawHealth() {
       ctx.fillStyle = "black";
       ctx.font = "20px Arial";
       ctx.fillText(
-        `Health: ${player.health} \n Lives: ${player.lives}`,
+        `Health: ${formatHealthValue()} \n Lives: ${player.lives} FPS: ${currentFPS}`,
         10,
         30,
       );
@@ -1126,7 +1297,7 @@
         showError = true;
         lastErrorTime = currentTime; // Update the last error time
         errorMessageDiv.textContent =
-          "Target defence blocked your attack! Invalid attack used!";
+          "Target defence blocked your attack!\n Press X to swap attack style!";
         errorMessageDiv.classList.remove("hidden");
         errorMessageDiv.classList.add("visible");
 
@@ -1143,7 +1314,7 @@
     function handleProjectileCollisions() {
       for (let i = 0; i < projectiles.length; i++) {
         const currentProjectile = projectiles[i];
-
+        console.log(`is this a projectile?? ${currentProjectile}`);
         //calculate radius of the non circle object
         const projectileRadius = Math.sqrt(
           (currentProjectile.size / 2) ** 2 + (currentProjectile.size / 2) ** 2,
@@ -1164,7 +1335,7 @@
           ) {
             if (checkCombatTriangle(player.damageStyle, ball.defense)) {
               console.log(
-                `The attack style was "projectile" and the defence style was ${ball.defense}`,
+                `The attack style was ${player.damageStyle} and the defence style was ${ball.defense}`,
               );
               ball.health -= 2; // Reduce ball health by 2 on projectile hit
             } else {
@@ -1183,47 +1354,50 @@
     }
 
     // Handle player projectile collision with balls
-    function handleMeleeCollisions() {
-      for (let i = 0; i < meleeStrikes.length; i++) {
-        const currentMelee = meleeStrikes[i];
+    //     function handleMeleeCollisions() {
+    //       for (let i = 0; i < meleeStrikes.length; i++) {
+    //         const currentMelee = meleeStrikes[i];
+    // // console.log({currentMelee});
+    //         //calculate radius of the non circle object
+    //         const meleeRadius = Math.sqrt(
+    //           (currentMelee.size / 2) ** 2 + (currentMelee.size / 2) ** 2,
+    //         );
 
-        //calculate radius of the non circle object
-        const meleeRadius = Math.sqrt(
-          (currentMelee.size / 2) ** 2 + (currentMelee.size / 2) ** 2,
-        );
+    //         // for (let projectile of projectiles) {
+    //         for (let ball of balls) {
+    //           //convert the radius that was calculated in order to calculate collision of radius's
+    //           if (
+    //             isProjectileColliding(
+    //               {
+    //                 x: currentMelee.x,
+    //                 y: currentMelee.y,
+    //                 radius: meleeRadius,
+    //               },
+    //               ball,
+    //             )
+    //           ) {
+    //             console.log(
+    //               `The attack style was ${player.damageStyle} and the defence style was ${ball.defense}`,
+    //             );
+    //             if (checkCombatTriangle(player.damageStyle, ball.defense)) {
+    //               console.log(
+    //                 `The attack style was ${player.damageStyle} and the defence style was ${ball.defense}`,
+    //               );
+    //               ball.health -= 2; // Reduce ball health by 2 on projectile hit
+    //             } else {
+    //               toggleDamageStyleErrorMessage();
+    //             }
 
-        // for (let projectile of projectiles) {
-        for (let ball of balls) {
-          //convert the radius that was calculated in order to calculate collision of radius's
-          if (
-            isProjectileColliding(
-              {
-                x: currentMelee.x,
-                y: currentMelee.y,
-                radius: meleeRadius,
-              },
-              ball,
-            )
-          ) {
-            if (checkCombatTriangle(player.damageStyle, ball.defense)) {
-              console.log(
-                `The attack style was "projectile" and the defence style was ${ball.defense}`,
-              );
-              ball.health -= 2; // Reduce ball health by 2 on projectile hit
-            } else {
-              toggleDamageStyleErrorMessage();
-            }
-
-            createParticles(ball.x, ball.y); // Create particles at the collision point
-            removeProjectile(projectiles[i]); // Remove the projectile after collision
-            if (ball.health <= 0) {
-              ball.health = 0;
-              handleBallDestruction(ball); // Handle ball destruction (optional)
-            }
-          }
-        }
-      }
-    }
+    //             createParticles(ball.x, ball.y); // Create particles at the collision point
+    //             removeProjectile(projectiles[i]); // Remove the projectile after collision
+    //             if (ball.health <= 0) {
+    //               ball.health = 0;
+    //               handleBallDestruction(ball); // Handle ball destruction (optional)
+    //             }
+    //           }
+    //         }
+    //       }
+    //     }
 
     // Function to remove a projectile from the projectiles array
     function removeProjectile(index) {
@@ -1266,7 +1440,6 @@
           respawnPlayer();
         }
       });
-
       // Attach the event listener
       const onClick = () => {
         // Remove the button from the DOM
@@ -1276,13 +1449,6 @@
         } else {
           console.warn("Respawn button was already removed or doesn't exist");
         }
-
-        // // Reset the game state
-        // if (player.lives <= 0) {
-        //   respawnGame();
-        // } else {
-        //   respawnPlayer();
-        // }
       };
 
       // Add click event listener
@@ -1309,15 +1475,126 @@
     }
 
     weaponBox.textContent = player.damageStyle;
+    let lastFrameTime = 0;
+    let frameCount = 0;
+    let elapsedTime = 0;
+    let currentFPS = 0;
+
+    function countFPS(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      let deltaTime;
+      // Calculate the time since the last frame
+      if (lastFrameTime !== timestamp) {
+        deltaTime = parseFloat((timestamp - lastFrameTime).toFixed(0));
+      }
+      lastFrameTime = timestamp;
+      if (typeof elapsedTime === "number" && typeof deltaTime === "number") {
+        elapsedTime += deltaTime;
+      }
+      frameCount++;
+      // If 1 second (1000ms) has passed, calculate and log FPS
+      if (elapsedTime >= 1000) {
+        currentFPS = frameCount;
+        frameCount = 0;
+        elapsedTime = 0;
+      }
+    }
+
+    //=========================================================================================================
+
+    // Wall size constants for easy adjustment
+    const WALL_WIDTH = 8;
+    const MIN_DISTANCE = 3 * WALL_WIDTH; // Minimum distance between walls (3 wall widths)
+
+    // Define the canvas size for boundary checking
+    const canvasWidth = 1000;
+    const canvasHeight = 1000;
+
+    // Define an array to store walls
+    let walls = [];
+
+    // Function to check if the new wall overlaps or is too close to any existing walls
+    function isWallTooClose(newWall) {
+      for (let i = 0; i < walls.length; i++) {
+        const existingWall = walls[i];
+
+        // Check if the new wall is too close to any existing wall (within the MIN_DISTANCE)
+        if (
+          Math.abs(existingWall.x - newWall.x) < MIN_DISTANCE ||
+          Math.abs(existingWall.y - newWall.y) < MIN_DISTANCE ||
+          Math.abs(
+            existingWall.x + existingWall.width - (newWall.x + newWall.width),
+          ) < MIN_DISTANCE ||
+          Math.abs(
+            existingWall.y + existingWall.height - (newWall.y + newWall.height),
+          ) < MIN_DISTANCE || Math.abs(
+            player.y + player.size - (newWall.y + newWall.height),
+          ) < MIN_DISTANCE * 4 ||
+          Math.abs(
+            player.x + existingWall.height - (newWall.x + newWall.width),
+          ) < MIN_DISTANCE * 4
+        ) {
+          return true; // The new wall is too close to an existing one
+        }
+      }
+      return false; // No walls are too close, the new wall is valid
+    }
+
+    // Function to generate a new wall
+    function generateWall() {
+      let newWall;
+      let validWall = false;
+
+      // Try to generate a valid wall until one is found
+      while (!validWall) {
+        // Randomly generate the coordinates and dimensions for the new wall
+        newWall = {
+          x: Math.random() * (canvasWidth - WALL_WIDTH), // Random X position
+          y: Math.random() * (canvasHeight - WALL_WIDTH), // Random Y position
+          width: WALL_WIDTH + Math.random() * 600, // Random width between 20 and 70
+          height: WALL_WIDTH + Math.random() * 50, // Random height between 20 and 70
+        };
+
+        // Check if the wall respects the minimum distance rule
+        validWall = !isWallTooClose(newWall);
+      }
+
+      // Once a valid wall is found, add it to the walls array
+      walls.push(newWall);
+    }
+
+    // Function to draw all walls
+    function drawWalls() {
+      ctx.fillStyle = "gray"; // Wall color
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "black";
+
+      walls.forEach((wall) => {
+        ctx.beginPath();
+        ctx.rect(wall.x, wall.y, wall.width, wall.height);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+
+    // Generate a certain number of walls (e.g., 5 walls) ensuring they don't break the rules
+    for (let i = 0; i < 5; i++) {
+      generateWall();
+    }
+
+    // Now draw the walls on the canvas
+    drawWalls();
+    //=========================================================================================================
     // Main game loop
-    function loop() {
+    function loop(timestamp) {
       if (!isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-
+        countFPS(timestamp);
+        drawWalls();
         //update game objects
+        updateMarks();
         updatePlayer(player);
         updateBalls();
-        updateMarks();
         updateParticles();
         updateProjectiles();
         updateMeleeStrikes();
@@ -1325,9 +1602,11 @@
         handleBallBallCollisions();
         handlePlayerCollisions();
         handleProjectileCollisions();
+        // handleMeleeCollisions();
         //draw game objects
 
         // drawCharacter(ctx, character); // Draw the character
+        drawMarks();
         drawPlayer(ctx, player); // Draw the character
         // drawPlayer();
         drawBalls();
@@ -1336,8 +1615,6 @@
         drawMeleeStrikes();
         drawParticles();
         drawBloodParticles();
-
-        drawMarks();
       }
       requestAnimationFrame(loop);
     }
