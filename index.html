@@ -27,38 +27,7 @@
 
     let marks = []; // Array to store marks
     // Ball objects
-    let balls = [
-      // {
-      //   x: 200,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: 2,
-      //   vy: 1,
-      //   color: "blue",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-      // {
-      //   x: 400,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: -3,
-      //   vy: 5,
-      //   color: "green",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-      // {
-      //   x: 300,
-      //   y: 200,
-      //   radius: 20,
-      //   vx: 5,
-      //   vy: -2,
-      //   color: "red",
-      //   lastHit: 0,
-      //   health: 10,
-      // },
-    ];
+    let balls = [];
     // Particle system
     let particles = [];
     // Mark constructor
@@ -97,18 +66,6 @@
           marks = marks.filter((m) => m !== mark); // Remove the mark after collision
           return false;
         }
-
-        // Check collision with player (same logic as handlePlayerCollisions)
-        // if (
-        //   mark.isActive &&
-        //   isCircleColliding(
-        //     { x: player.x, y: player.y, radius: player.size / 2 },
-        //     mark,
-        //   )
-        // ) {
-        //   // player.health -= 5; // Damage player by 5w
-        //   // handlePlayerDamage();
-        // }
 
         return true;
       });
@@ -164,6 +121,8 @@
       height: 100,
       size: 40,
       speed: 4,
+      currentSpeed: 4,
+      isSlowed: false,
       angle: 0, // Forward direction (in radians)
       color: "blue",
       health: 100,
@@ -189,44 +148,30 @@
     // Handle player controls
     function updatePlayer(player) {
       if (!canControl || isGameOver) return; // Skip if the game is over or controls are disabled
-
-      // // Calculate the angle between the player and the mouse
-      // player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-
       // Calculate the angle between the player and the mouse
       const angleToMouse = Math.atan2(mouseY - player.y, mouseX - player.x);
       player.angle = angleToMouse;
 
-      // // Determine whether the player is facing forward or backward
-      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
-      // player.isFacingBack = Math.abs(player.angle) > Math.PI / 2;
-
       // Check if the mouse is above the player (on the Y-axis)
       player.isFacingBack = mouseY < player.y;
-
-      // // Determine if the player should face back based on tightened bounds
-      // const FRONT_ANGLE_THRESHOLD = Math.PI / 2; // ±45 degrees (front-facing range)
-      // player.isFacingBack =
-      //   player.angle > FRONT_ANGLE_THRESHOLD ||
-      //   player.angle < -FRONT_ANGLE_THRESHOLD;
 
       // Move player based on keyboard input
       //move up on the canvas
       if (keys["w"]) {
-        player.y -= player.speed;
+        player.y -= player.currentSpeed;
       }
       //move down on the canvas
       if (keys["s"]) {
-        player.y += player.speed;
+        player.y += player.currentSpeed;
       }
       if (keys["a"]) {
         // Move left on the canvas
-        player.x -= player.speed;
+        player.x -= player.currentSpeed;
       }
 
       if (keys["d"]) {
         // Move right on the canvas
-        player.x += player.speed;
+        player.x += player.currentSpeed;
       }
 
       // Boundaries check
@@ -265,7 +210,6 @@
 
     function handlePlayerDamage(damageRoll) {
       if (isPlayerDead) return; // Stop further execution if the player is already dead
-      console.log(damageRoll);
       //check the damage triangle
       const combatCheck = checkCombatTriangle(
         damageRoll.damageStyle,
@@ -403,24 +347,6 @@
       console.log(`Current Weapon: ${player.damageStyle}`); // Log the current weapon for debugging
     }
 
-    //1. This stuff here only works for projectileStrike because its the only attack method properly implemented
-    // Function to handle attack based on the active weapon
-    // function handleAttack(event) {
-    //   if (player.damageStyle === "projectile") {
-    //     if (event.code === "Space") {
-    //       projectileStrike(); // Fire projectile attack
-    //     }
-    //   } else if (player.damageStyle === "melee") {
-    //     if (event.code === "Space") {
-    //       meleeStrike(); // Perform melee strike when Space is pressed
-    //     }
-    //   } else if (player.damageStyle === "magic") {
-    //     if (event.type === "click") {
-    //       magicStrike(event); // Perform magic strike on click
-    //     }
-    //   }
-    // }
-
     // Add event listener for "X" key to cycle weapons
     document.addEventListener("keydown", (event) => {
       if (event.code === "KeyX") {
@@ -461,32 +387,10 @@
       }
     }
 
-    // Update melee strikesx
-    // function updateMeleeStrikes() {
-    //   meleeStrikes = meleeStrikes.filter((m) => {
-    //     // Remove melee strikes that have traveled beyond their maximum range
-    //     const distanceTravelled = Math.sqrt(
-    //       Math.pow(m.xEnd - m.xStart, 2) + Math.pow(m.yEnd - m.yStart, 2),
-    //     );
-    //     return distanceTravelled < 400; // 100 is the max range for the melee strike (can be adjusted)
-    //   });
-
-    //   for (let m of meleeStrikes) {
-    //     // Move the melee strike forward (in this case, this is a simple linear direction)
-    //     const range = 400; // Define the max range for the melee strike
-    //     const deltaX = Math.cos(m.angle) * m.speed;
-    //     const deltaY = Math.sin(m.angle) * m.speed;
-
-    //     m.xStart += deltaX;
-    //     m.yStart += deltaY;
-    //     m.xEnd = m.xStart + Math.cos(m.angle) * range;
-    //     m.yEnd = m.yStart + Math.sin(m.angle) * range;
-    //   }
-    // }
-
+    //handling melee attacks
     //=================================================================================================================
 
-    //===========================================================================================
+    //establishes the 'data' & 'runtime' of the attacks.
     function updateMeleeStrikes() {
       meleeStrikes = meleeStrikes.filter((m) => {
         // Remove melee strikes after some time/distance
@@ -526,6 +430,7 @@
       }
     }
 
+    //supporting function to calculate the melee attacks
     function distanceToSegment(px, py, x1, y1, x2, y2) {
       const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2; // Square of the segment length
 
@@ -543,7 +448,7 @@
       return Math.hypot(px - closestX, py - closestY);
     }
 
-    // Draw melee strikes
+    // Actually shows the attack animation on the screen
     function drawMeleeStrikes() {
       ctx.strokeStyle = "blue"; // Color of the melee strike
       ctx.lineWidth = 5; // Set line width for better visibility
@@ -598,30 +503,16 @@
         // ctx.rotate(2 *character.angle);
         ctx.scale(1, -1); // Flip horizontally
       }
-      if (character.angle > -3.14 && character.angle < -1.97) {
-        // ctx.scale(1, -1); // Flip horizontally
-        // ctx.rotate(-character.angle);
-      }
+      // if (character.angle > -3.14 && character.angle < -1.97) {
+
+      // }
       if (character.angle >= -1.7 && character.angle < -0.01) {
         ctx.scale(1, -1); // Flip horizontally
-        // ctx.rotate(-character.angle);
       }
-      // else {
-      //   ctx.rotate(character.angle);
-      //   // ctx.scale(1, -1); // Flip horizontally
-      // }
-
-      // Apply horizontal flip for back-facing orientation
-      // if (character.isFacingBack) {
-      //   ctx.scale(1, -1); // Flip horizontally
-      // }sadss
-
-      // Set color based on mouse position
 
       // // Flip horizontally when showing the back
       if (player.isFacingBack) {
         ctx.scale(1, -1); // Mirror vertically to represent the back
-        // } else {
       }
 
       // ctx.rotate(character.angle);
@@ -731,36 +622,6 @@
 
       ctx.restore();
     }
-
-    // Draw player
-    // function drawPlayer() {
-    //   ctx.save();
-    //   ctx.translate(player.x, player.y);
-    //   ctx.rotate(player.angle);
-
-    //   if (Date.now() - player.lastHitTime < 1500) {
-    //     ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red during cooldown
-    //   } else {
-    //     ctx.fillStyle = player.color;
-    //   }
-    //   // Draw the square
-    //   // ctx.fillStyle = player.color;
-    //   ctx.fillRect(
-    //     -player.size / 2,
-    //     -player.size / 2,
-    //     player.size,
-    //     player.size,
-    //   );
-
-    //   // Draw forward marker
-    //   ctx.beginPath();
-    //   ctx.moveTo(0, -player.size / 2); // Forward point
-    //   ctx.lineTo(0, player.size / 2); // Back line
-    //   ctx.strokeStyle = "white";
-    //   ctx.lineWidth = 2;
-    //   ctx.stroke();
-    //   ctx.restore();
-    // }
 
     function getRandomNumber(min, max) {
       return Math.random() * (max - min) + min;
@@ -950,9 +811,11 @@
 
       for (let ball of balls) {
         let now = Date.now();
+        // Check for cooldown
+//@TODO:
+        //this raw 200 should be converted to a property on the balls ,same way it should be for marks
         const combatTimer = now - player.lastHit > 200; //verifies that damage is dealt in 800ms blocks
 
-        console.log(combatTimer);
         //convert the radius that was calculated in order to calculate collision of radius's
         if (
           isCircleColliding(
@@ -960,15 +823,12 @@
             ball,
           )
         ) {
-          // Check for cooldown
           if (!combatTimer) return;
           now = Date.now();
           player.lastHit = now;
-          // if (!ball.lastHit || currentTime - ball.lastHit > 1500) {
           const damageRoll = {
             damage: ball.damage,
             damageStyle: ball.damageStyle,
-            // };
           };
           handlePlayerDamage(damageRoll);
           createParticles(ball.x, ball.y); // Create particles at collision point
@@ -1008,7 +868,10 @@
             mark,
           )
         ) {
-          if(!combatTimer) return;
+          player.currentSpeed = player.speed * 0.05; // Slow the player to 25% of base speed
+
+          if (!combatTimer) return;
+          //damage inflicting so reset the hit clock
           now = Date.now();
           player.lastMarkHit = now;
           const damageRoll = {
@@ -1017,6 +880,10 @@
           };
           handlePlayerDamage(damageRoll);
           createParticles(mark.x, mark.y);
+        } else {
+          console.log("player is not in the mark");
+          // player.isSlowed = false; // Track if the player is currently slowed
+          player.currentSpeed = player.speed 
         }
       }
     }
@@ -1107,7 +974,7 @@
       ctx.fillStyle = "black";
       ctx.font = "20px Arial";
       ctx.fillText(
-        `Health: ${player.health} \n Lives: ${player.lives}`,
+        `Health: ${player.health} \n Lives: ${player.lives} FPS: ${currentFPS}`,
         10,
         30,
       );
@@ -1266,7 +1133,6 @@
           respawnPlayer();
         }
       });
-
       // Attach the event listener
       const onClick = () => {
         // Remove the button from the DOM
@@ -1276,13 +1142,6 @@
         } else {
           console.warn("Respawn button was already removed or doesn't exist");
         }
-
-        // // Reset the game state
-        // if (player.lives <= 0) {
-        //   respawnGame();
-        // } else {
-        //   respawnPlayer();
-        // }
       };
 
       // Add click event listener
@@ -1309,10 +1168,36 @@
     }
 
     weaponBox.textContent = player.damageStyle;
+    let lastFrameTime = 0;
+    let frameCount = 0;
+    let elapsedTime = 0;
+    let currentFPS = 0;
+
+    function countFPS(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      let deltaTime;
+      // Calculate the time since the last frame
+      if (lastFrameTime !== timestamp) {
+        deltaTime = parseFloat((timestamp - lastFrameTime).toFixed(0));
+        console.log({ deltaTime });
+      }
+      lastFrameTime = timestamp;
+      if (typeof elapsedTime === "number" && typeof deltaTime === "number") {
+        elapsedTime += deltaTime;
+      }
+      frameCount++;
+      // If 1 second (1000ms) has passed, calculate and log FPS
+      if (elapsedTime >= 1000) {
+        currentFPS = frameCount;
+        frameCount = 0;
+        elapsedTime = 0;
+      }
+    }
     // Main game loop
-    function loop() {
+    function loop(timestamp) {
       if (!isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+        countFPS(timestamp);
 
         //update game objects
         updatePlayer(player);
