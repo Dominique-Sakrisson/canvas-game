@@ -1,9 +1,9 @@
 # canvas-game
 
-## staging: 
+# staging: 
 
 ### https://dominique-sakrisson.github.io/canvas-game/ 
 
-## Latest: 
+# Latest: 
 
 ### https://alterarpg.netlify.app/
