@@ -38,14 +38,14 @@ export function generateWall(payload) {
       }
     }
     if (newWall.height > 450) {
-      newWall.height = newWall.height - MIN_HEIGHT;
+      newWall.height = Math.min(newWall.height, 450);
     }
     if (newWall.width > 450) {
-      newWall.width = newWall.width - MIN_WIDTH;
+      newWall.width = Math.min(newWall.width, 450);
     }
     const { canvas, player } = payload;
     // Check if the wall respects the minimum distance rule
-    validWall = !isWallTooClose(newWall, walls, canvas, player);
+    validWall = !isWallTooClose(newWall, walls, canvas);
   }
 
   // Once a valid wall is found, add it to the walls array
@@ -53,42 +53,41 @@ export function generateWall(payload) {
   // walls.push(newWall);
 }
 
-//the new wall,
-//the player
-//the walls array
-export function isWallTooClose(newWall, walls, canvas, player) {
-  console.log("canvas");
-  const MIN_DISTANCE = 60;
-  for (let i = 0; i < walls.length; i++) {
-    const existingWall = walls[i];
-   
-    // Check if the new wall is too close to any existing wall (within the MIN_DISTANCE)
+export function isWallTooClose(newWall, walls, canvas) {
+  const MIN_DISTANCE = 100;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
 
-    if (
-      Math.abs(newWall.x + newWall.width - canvas.height / 2) < MIN_DISTANCE ||
-      Math.abs(newWall.x - newWall.width - canvas.width / 2) < MIN_DISTANCE ||
-      Math.abs(newWall.y + newWall.height - canvas.height / 2) < MIN_DISTANCE ||
-      Math.abs(newWall.y - newWall.height - canvas.width / 2) < MIN_DISTANCE ||
+  // Check if the new wall is too close to the center of the canvas
+  const isTooCloseToCenter =
+    Math.abs(newWall.x - centerX) < MIN_DISTANCE ||
+    Math.abs(newWall.x + newWall.width - centerX) < MIN_DISTANCE ||
+    Math.abs(newWall.y - centerY) < MIN_DISTANCE ||
+    Math.abs(newWall.y + newWall.height - centerY) < MIN_DISTANCE;
+
+  if (isTooCloseToCenter) {
+    return true;
+  }
+
+  // Check if the new wall intersects or is too close to any existing wall
+  for (const existingWall of walls) {
+    const intersects =
+      newWall.x < existingWall.x + existingWall.width &&
+      newWall.x + newWall.width > existingWall.x &&
+      newWall.y < existingWall.y + existingWall.height &&
+      newWall.y + newWall.height > existingWall.y;
+
+    const isTooClose =
       Math.abs(existingWall.x - newWall.x) < MIN_DISTANCE ||
-      Math.abs(existingWall.y - newWall.y) < MIN_DISTANCE ||
-      Math.abs(player.x - newWall.x) < MIN_DISTANCE ||
-      Math.abs(player.x - newWall.x) < MIN_DISTANCE ||
-      Math.abs(player.y - newWall.x) < MIN_DISTANCE ||
-      Math.abs(player.x - newWall.y) < MIN_DISTANCE ||
-      Math.abs(player.y - newWall.y) < MIN_DISTANCE ||
-      Math.abs(
-        existingWall.x + existingWall.width - (newWall.x + newWall.width),
-      ) < MIN_DISTANCE ||
-      Math.abs(
-        existingWall.y + existingWall.height - (newWall.y + newWall.height),
-      ) < MIN_DISTANCE
-    ) {
-      return true; // The new wall is too close to an existing one
+      Math.abs(existingWall.y - newWall.y) < MIN_DISTANCE;
+
+    if (intersects || isTooClose) {
+      return true;
     }
   }
-  return false; // No walls are too close, the new wall is valid
-}
 
+  return false; // The new wall is valid
+}
 export function wallMetricDataFormat(walls) {
   // if (!walls) return;
   if (!walls.length) return;
