@@ -12,11 +12,16 @@
       <div id="errorMessage" class="hidden">Invalid attack used!</div>
       <div id="weapon" class="weaponBox"></div>
     </div>
+    <div id="gameMetrics"></div>
   </body>
   <script type="module">
     import { meleeStrike } from "./character_attacks.js";
+    import { drawWalls } from "./worldBuilder/wall/draw.js";
+    import { rollWalls, wallMetricDataFormat } from "./worldBuilder/wall/wall.js";
+
     const canvas = document.getElementById("gameCanvas");
     const weaponBox = document.getElementById("weapon");
+    const gameMetrics = document.getElementById("gameMetrics");
     weaponBox.classList.add("green");
     const ctx = canvas.getContext("2d");
     let currentLevel = 1;
@@ -25,11 +30,61 @@
     let lastErrorTime = 0; // Tracks the last time the error message was triggered
     let isPlayerDead = false; // Flag to prevent multiple executions when health drops to 0
 
+    
+    // Character properties
+    // const character = {
+    //   x: 200,
+    //   y: 200,
+    //   width: 50,
+    //   height: 100,
+    //   speed: 5,
+    // };
+
+    // Player Object
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 50,
+      height: 100,
+      size: 40,
+      speed: 4,
+      currentSpeed: 4,
+      isSlowed: false,
+      angle: 0, // Forward direction (in radians)
+      color: "blue",
+      health: 100,
+      maxHealth: 100,
+      damage: 1,
+      damageStyle: "projectile",
+      defenseStyle: "projectile",
+      lives: 3,
+      lastHit: Date.now(),
+      lastMarkHit: Date.now(),
+      damaged: false,
+    };
+
     let marks = []; // Array to store marks
     // Ball objects
     let balls = [];
     // Particle system
     let particles = [];
+    // Wall size constants for easy adjustment
+    const WALL_WIDTH = 4;
+    const MIN_DISTANCE = 10 * WALL_WIDTH + 10; // Minimum distance between walls (3 wall widths)
+
+    // Define the canvas size for boundary checking
+    const canvasWidth = 900;
+    const canvasHeight = 900;
+
+    // Define an array to store walls
+    // let walls = [];
+    const wallsPayload = {
+      canvas: {width: canvas.width, height: canvas.height},
+      player: {x: player.x, y: player.y, width: player.width}
+    }
+    let walls = rollWalls(5, wallsPayload);
+
+
     // Mark constructor
     function createMark() {
       const mark = {
@@ -174,37 +229,19 @@
     let mouseX = 0;
     let mouseY = 0;
 
-    // Character properties
-    const character = {
-      x: 200,
-      y: 200,
-      width: 50,
-      height: 100,
-      speed: 5,
-    };
-
-    // Player Object
-    const player = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      width: 50,
-      height: 100,
-      size: 40,
-      speed: 4,
-      currentSpeed: 4,
-      isSlowed: false,
-      angle: 0, // Forward direction (in radians)
-      color: "blue",
-      health: 100,
-      maxHealth: 100,
-      damage: 1,
-      damageStyle: "projectile",
-      defenseStyle: "projectile",
-      lives: 3,
-      lastHit: Date.now(),
-      lastMarkHit: Date.now(),
-      damaged: false,
-    };
+    // function wallMetricDataFormat() {
+    //   // if (!walls) return;
+    //   if (!walls.length) return;
+    //   let wallListString = "";
+    //   let count = 1;
+    //   walls.forEach((wall) => {
+    //     wallListString += `wall ${count} x1: ${wall.x}, x2: ${wall.x + wall.width} <br>
+    //       wall ${count} y: ${wall.y}, y2: ${wall.y + wall.height} <br> `;
+    //     count++;
+    //   });
+    //   console.log({ wallListString });
+    //   return wallListString;
+    // }
 
     // Handle player movement
     const keys = {};
@@ -698,61 +735,7 @@
         }
       }
     }
-    //establishes the 'data' & 'runtime' of the attacks.
-    //detects if an attack has landed
-    //its different than projectiles in that it handles its own collisions
-    // function updateMeleeStrikes() {
-    //   meleeStrikes = meleeStrikes.filter((m) => {
-    //     // Remove melee strikes after some time/distance
-    //     return Date.now() - m.attackTiming < 400; // Lifetime of melee strike (400ms)
-    //   });
-
-    //   for (let m of meleeStrikes) {
-    //     m.xEnd = m.xStart + Math.cos(m.angle) * 200; // Max range for line
-    //     m.yEnd = m.yStart + Math.sin(m.angle) * 200;
-
-    //     // Check if the melee strike hits a wall first
-    //     if (checkStrikeWallCollision(m)) {
-    //       continue; // Skip this melee strike if it hits a wall
-    //     }
-
-    //     // Check collision with balls
-    //     for (let ball of balls) {
-    //       const distance = distanceToSegment(
-    //         ball.x,
-    //         ball.y,
-    //         m.xStart,
-    //         m.yStart,
-    //         m.xEnd,
-    //         m.yEnd,
-    //       );
-
-    //       const combatTimer = Date.now() - ball.lastHit > 200; //verifies that damage is dealt in 500ms blocks
-    //       // If distance is less than the ball's radius, deal damage
-    //       if (distance < ball.radius && combatTimer) {
-    //         ball.lastHit = Date.now();
-
-    //         if (checkCombatTriangle(player.damageStyle, ball.defense)) {
-    //           console.log(
-    //             `The attack style was ${player.damageStyle} and the defence style was ${ball.defense}`,
-    //           );
-    //           ball.health -= 10; // Reduce ball health by 2 on projectile hit
-    //           createParticles(ball.x, ball.y); // Create particles at collision point
-    //         } else {
-    //           toggleDamageStyleErrorMessage();
-    //         }
-    //         // Handle damage to ball or other game logic
-
-    //         createParticles(ball.x, ball.y); // Create particles at collision point
-    //         // ball.health -= 1; // Example: reduce ball's health
-
-    //         if (ball.health <= 0) {
-    //           balls = balls.filter((b) => b !== ball); // Remove ball if health <= 0
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+    
 
     //supporting function to calculate the melee attacks
     function distanceToSegment(px, py, x1, y1, x2, y2) {
@@ -772,20 +755,6 @@
       return Math.hypot(px - closestX, py - closestY);
     }
 
-    // Actually shows the attack animation on the screen
-    // function drawMeleeStrikes() {
-    //   ctx.strokeStyle = "blue"; // Color of the melee strike
-    //   ctx.lineWidth = 5; // Set line width for better visibility
-    //   for (let m of meleeStrikes) {
-    //     ctx.beginPath();
-    //     ctx.moveTo(m.xStart, m.yStart);
-    //     ctx.lineTo(m.xEnd, m.yEnd); // Draw a line to the end point of the melee strike
-    //     ctx.stroke();
-    //     ctx.closePath();
-    //   }
-    // }
-
-    // Function to draw the attack on screen
     // Function to draw the attack on screen
     function drawMeleeStrikes() {
       ctx.strokeStyle = "blue"; // Color of the melee strike
@@ -840,19 +809,14 @@
 
       if (character.angle < 3.14 && character.angle > 1.7) {
         // Rotate player based on the angle (no added Math.PI)
-        // ctx.rotate(2 *character.angle);
         ctx.scale(1, -1); // Flip horizontally
       }
-      // if (character.angle > -3.14 && character.angle < -1.97) {
-
-      // }
       if (character.angle >= -1.7 && character.angle < -0.01) {
         ctx.scale(1, -1); // Flip horizontally
       }
-
       // // Flip horizontally when showing the back
       if (player.isFacingBack) {
-        ctx.scale(1, -1); // Mirror vertically to represent the back
+        ctx.scale(1, -1); 
       }
 
       // ctx.rotate(character.angle);
@@ -1351,8 +1315,7 @@
     // Draw health
     function drawHealth() {
       ctx.fillStyle = "white";
-      if(player.health < 30){
-
+      if (player.health < 30) {
         ctx.fillStyle = "red";
       }
       ctx.fillRect(0, 0, canvas.width, 0); // Adjust the height as needed
@@ -1582,93 +1545,6 @@
     }
 
     //=========================================================================================================
-
-    // Wall size constants for easy adjustment
-    const WALL_WIDTH = 4;
-    const MIN_DISTANCE = 10 * WALL_WIDTH + 20; // Minimum distance between walls (3 wall widths)
-
-    // Define the canvas size for boundary checking
-    const canvasWidth = 1000;
-    const canvasHeight = 1000;
-
-    // Define an array to store walls
-    let walls = [];
-
-    // Function to check if the new wall overlaps or is too close to any existing walls
-    function isWallTooClose(newWall) {
-      for (let i = 0; i < walls.length; i++) {
-        const existingWall = walls[i];
-
-        // Check if the new wall is too close to any existing wall (within the MIN_DISTANCE)
-        if (
-          Math.abs(newWall.x + newWall.width - canvas.height / 2) <
-            MIN_DISTANCE ||
-          Math.abs(newWall.x - newWall.width - canvas.width / 2) <
-            MIN_DISTANCE ||
-          Math.abs(newWall.y + newWall.height - canvas.height / 2) <
-            MIN_DISTANCE ||
-          Math.abs(newWall.y - newWall.height - canvas.width / 2) <
-            MIN_DISTANCE ||
-          Math.abs(existingWall.x - newWall.x) < MIN_DISTANCE ||
-          Math.abs(existingWall.y - newWall.y) < MIN_DISTANCE ||
-          Math.abs(player.x - newWall.x) < MIN_DISTANCE ||
-          Math.abs(player.y - newWall.x) < MIN_DISTANCE ||
-          Math.abs(player.x - newWall.y) < MIN_DISTANCE ||
-          Math.abs(player.y - newWall.y) < MIN_DISTANCE ||
-          Math.abs(
-            existingWall.x + existingWall.width - (newWall.x + newWall.width),
-          ) < MIN_DISTANCE ||
-          Math.abs(
-            existingWall.y + existingWall.height - (newWall.y + newWall.height),
-          ) < MIN_DISTANCE
-        ) {
-          return true; // The new wall is too close to an existing one
-        }
-      }
-      return false; // No walls are too close, the new wall is valid
-    }
-
-    // Function to generate a new wall
-    function generateWall() {
-      let newWall;
-      let validWall = false;
-      let MIN_HEIGHT = 150;
-      let MIN_WIDTH = 50;
-
-      // Try to generate a valid wall until one is found
-      while (!validWall) {
-        // Randomly generate the coordinates and dimensions for the new wall
-        newWall = {
-          x: Math.random() * (canvasWidth - WALL_WIDTH), // Random X position
-          y: Math.random() * (canvasHeight - WALL_WIDTH), // Random Y position
-          width: WALL_WIDTH + Math.random() * 500 + MIN_WIDTH, // Random width between 20 and 70
-          height: WALL_WIDTH + Math.random() * 500 + MIN_HEIGHT, // Random height between 20 and 70
-        };
-        if (newWall.width > 150 && newWall.height > 150) {
-          let chance = Math.floor(Math.random() * 2);
-          switch (chance) {
-            case 0:
-              newWall.height = WALL_WIDTH + Math.random() * 50;
-              break;
-            case 1:
-              newWall.width = WALL_WIDTH + Math.random() * 50;
-          }
-        }
-        if (newWall.height > 450) {
-          newWall.height = newWall.height - MIN_HEIGHT;
-        }
-        if (newWall.width > 450) {
-          newWall.width = newWall.width - MIN_WIDTH;
-        }
-
-        // Check if the wall respects the minimum distance rule
-        validWall = !isWallTooClose(newWall);
-      }
-
-      // Once a valid wall is found, add it to the walls array
-      walls.push(newWall);
-    }
-
     // Store the x-offsets for scrolling
     let terrainOffsetX = 0;
     let cloudOffsetX = 0;
@@ -1813,29 +1689,17 @@
       // }
     }
 
-    // Function to draw all walls
-    function drawWalls() {
-      ctx.fillStyle = "gray"; // Wall color
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "black";
+    let wallData;
 
-      walls.forEach((wall) => {
-        ctx.beginPath();
-        ctx.rect(wall.x, wall.y, wall.width, wall.height);
-        ctx.fill();
-        ctx.stroke();
-      });
+    if (walls.length) {
+      wallData = wallMetricDataFormat(walls);
+      gameMetrics.innerHTML = `
+        player.x : ${player.x} <br>
+        player.y: ${player.y} <br>
+    ${wallData}
+        `;
     }
 
-    // Generate a certain number of walls (e.g., 5 walls) ensuring they don't break the rules
-    function rollWalls(numberWalls) {
-      for (let i = 0; i < numberWalls; i++) {
-        generateWall();
-      }
-    }
-    rollWalls(10);
-    // Now draw the walls on the canvas
-    drawWalls();
     //=========================================================================================================
     // Main game loop
     function loop(timestamp) {
@@ -1844,6 +1708,13 @@
         clouds.forEach((cloud) => {
           cloud.x++;
         });
+        if (wallData) {
+          gameMetrics.innerHTML = `
+        player.x : ${player.x} <br>
+        player.y: ${player.y} <br>
+    ${wallData}
+        `;
+        }
         countFPS(timestamp);
         //update game objects
         updateMarks();
@@ -1863,7 +1734,7 @@
         drawTerrain();
         drawMarks();
         drawPlayer(ctx, player); // Draw the character
-        drawWalls();
+        drawWalls(walls, ctx);
         // drawPlayer();
         drawBalls();
         drawHealth();
